@@ -110,3 +110,9 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+.logo {
+  font-family: "League Spartan", sans-serif;
+  font-weight: 700;
+  color: #F76F44;
+}

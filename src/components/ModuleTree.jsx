@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom';
 import { rawSupabaseData } from '../assets/MockModuleDatabase';
 
 //Create dictionary key-value pair for efficient Module finding

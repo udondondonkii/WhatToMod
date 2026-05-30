@@ -1,5 +1,5 @@
 import Signup from "./components/Signup";
-import ModuleTree from "./components/Module Tree"
+import ModuleTree from "./components/ModuleTree"
 import { useState } from "react";
 
 function App() {
