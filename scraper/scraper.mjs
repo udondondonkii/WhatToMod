@@ -105,7 +105,7 @@ async function scrapeModule(code) {
 async function scrapeModule(page, code) {
   try {
     await page.goto(`https://nusmods.com/courses/${code}`, {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
       timeout: 30000,
     });
 
