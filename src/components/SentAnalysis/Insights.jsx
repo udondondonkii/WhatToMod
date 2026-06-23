@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from "react";
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useModuleSearch } from "../../hooks/useModuleSearch";
 import { SearchBar } from "./SearchBar";
 import { SentimentSummary } from "./SentimentSummary";
@@ -17,9 +17,17 @@ export default function Insights() {
   } = useModuleSearch();
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const { moduleCode } = useParams();
 
   const resultsRef = useRef(null);
  
+  useEffect(() => {
+    if (moduleCode) {
+      loadModule(moduleCode);
+    }
+  }, [moduleCode, loadModule]);
+
   function handleSelect(code) {
     loadModule(code);
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
@@ -29,7 +37,16 @@ export default function Insights() {
     <div className="app">
       <header className="app-header">
         <div>
-          <button id= "back-button" onClick={() => navigate('/dashboard')}> Back
+          <button id="back-button" onClick={() => {
+              if (location.state?.from === '/moduleTree' && location.state.moduleTreeState) {
+                navigate('/moduleTree', { state: location.state.moduleTreeState });
+              } else if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/dashboard');
+              }
+            }}>
+            Back
           </button>
         </div>
         <div className="header-inner">

@@ -1,20 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { rawSupabaseData } from '../assets/MockModuleDatabase';
-import SelectMajor from './ModTree_SelectMajor';
-import ModuleTree from './ModTree_ModTree';
-import SelectedBasket from './ModTree_SelectionBasket';
+import SelectMajor from './ModTree_components/ModTree_SelectMajor';
+import ModuleTree from './ModTree_components/ModTree_ModTree';
+import SelectedBasket from './ModTree_components/ModTree_SelectionBasket';
 
-// Global complete dictionary map used specifically for the selection basket lookups
-// Preserve top-level module metadata while including pillar and Level 4000 pathway options.
+//Converting rawSupabaseData into a dictionary 
 const moduleDatabase = rawSupabaseData.reduce((acc, mod) => {
+    // Add module into dictionary if not already present
     if (!acc[mod.id]) acc[mod.id] = mod;
 
+    /// Secondary details to a module
+    // If the module is a pillar, also add its options into the dictionary
     if (mod.isPillar) {
         mod.options.forEach(option => {
             if (!acc[option.id]) acc[option.id] = option;
         });
     }
 
+    // If the module is a Level 4000 pathway, also add its options into the dictionary
     if (mod.isLevel4000Pathway) {
         mod.optionA.basket1.options.forEach(option => {
             if (!acc[option.id]) acc[option.id] = option;
@@ -31,8 +35,9 @@ const moduleDatabase = rawSupabaseData.reduce((acc, mod) => {
 }, {});
 
 export default function App() {
-    const [selectedMajor, setSelectedMajor] = useState('Empty-Major');
-    const [selectedMods, setSelectedMods] = useState([]);
+    const location = useLocation();
+    const [selectedMajor, setSelectedMajor] = useState(location.state?.selectedMajor ?? 'Empty-Major');
+    const [selectedMods, setSelectedMods] = useState(location.state?.selectedMods ?? []);
 
     const handleToggleModule = (modId) => {
         setSelectedMods((currentList) => 
@@ -44,13 +49,24 @@ export default function App() {
         mod.majors && mod.majors.includes(selectedMajor)
     );
 
+    useEffect(() => {
+        const savedState = location.state?.moduleTreeState;
+        if (savedState) {
+            setSelectedMajor(savedState.selectedMajor ?? 'Empty-Major');
+            setSelectedMods(Array.isArray(savedState.selectedMods) ? savedState.selectedMods : []);
+            if (typeof savedState.scrollPosition === 'number') {
+                window.requestAnimationFrame(() => window.scrollTo({ top: savedState.scrollPosition }));
+            }
+        }
+    }, [location.state]);
+
     const modulesByLvl = [1000, 2000, 3000, 4000].map(lvl => 
         filteredModules.filter(mod => mod.level === lvl)
     );
 
     return (
-        <div className="min-h-screen bg-[#F6EDDC]">
-        <div style={{ fontFamily: 'sans-serif', padding: '20px', backgroundColor: '#F6EDDC' }}>
+        <div className="min-h-screen bg-[#F7F6F2]">
+        <div style={{ fontFamily: 'sans-serif', padding: '20px', backgroundColor: '#F7F6F2' }}>
             <SelectMajor selectedMajor={selectedMajor} onMajorChange={setSelectedMajor} />
 
             {selectedMajor !== 'Empty-Major' ? (
@@ -58,6 +74,7 @@ export default function App() {
                     modulesByLvl={modulesByLvl} 
                     selectedMods={selectedMods} 
                     selectedMajor={selectedMajor}
+                    moduleTreeState={{ selectedMajor, selectedMods }}
                     onToggleModule={handleToggleModule} 
                 />
             ) : (
@@ -74,6 +91,7 @@ export default function App() {
             selectedMods={selectedMods}
             selectedMajor={selectedMajor}
             moduleDatabase={moduleDatabase}
+            moduleTreeState={{ selectedMajor, selectedMods }}
             onToggleModule={handleToggleModule}
         />
         </div>
