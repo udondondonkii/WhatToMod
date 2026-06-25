@@ -1,17 +1,17 @@
-name: Daily NUSMods Scrape
+name: Daily NUSMods Scrape & Analyse
 
 on:
   push:
     branches:
-      - reviewAnalyser  # runs automatically when i push to reviewAnalyser
+      - reviewAnalyser  # Runs automatically when you push to reviewAnalyser
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '0 2 * * *' # Fires daily at 02:00 UTC
   workflow_dispatch:
 
 jobs:
-  scrape:
+  scrape_and_analyse:
     runs-on: ubuntu-latest
-    timeout-minutes: 360    # 6 hour max (full scrape of all modules)
+    timeout-minutes: 120 
 
     steps:
       - name: Checkout repo
@@ -24,7 +24,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: scraper/package-lock.json
 
-      - name: Install scraper dependencies
+      - name: Install dependencies
         working-directory: scraper
         run: npm install
 
@@ -32,12 +32,20 @@ jobs:
         working-directory: scraper
         run: npx playwright install chromium --with-deps
 
-      - name: Run scraper
+      - name: Run Scraper
         working-directory: scraper
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: node scraper.mjs
+        run: node scraper.mjs --limit=400
+
+      - name: Run Sentiment Analyser
+        working-directory: scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        # Runs the analyser with the explicit garbage collection flag to keep runtime memory stable
+        run: node --expose-gc analyser.mjs
 
       - name: Log completion
-        run: echo "Scrape completed at $(date)"
+        run: echo "Scraping and analysis pipeline completed at $(date)"

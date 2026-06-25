@@ -23,7 +23,7 @@ function AspectCard({ aspectKey, label, level, score, descriptor }) {
           aria-valuemax={100}
         />
       </div>
-      <p className="aspect-desc">{descriptor}</p>
+      <p className="aspect-desc">{descriptor ?? ""}</p>
     </div>
   );
 }

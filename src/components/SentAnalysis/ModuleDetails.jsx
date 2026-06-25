@@ -1,5 +1,3 @@
-// src/components/SentAnalysis/SkeletonLoader.tsx
-// src/components/SentAnalysis/ModuleDetails.tsx
 import { useState } from "react";
 
 
@@ -39,7 +37,6 @@ export function ModuleDetails({ module: mod }) {
       {open && (
         <div id="module-details-body" className="details-body">
 
-          {/* Basic info grid */}
           <div className="details-grid">
             <div>
               <p className="detail-key">Credits</p>
@@ -107,7 +104,6 @@ export function ModuleDetails({ module: mod }) {
               )}
 
               <div className="timetable-slots">
-                {/* Deduplicate by lessonType + classNo */}
                 {Array.from(
                   new Map(
                     sem.timetable.map((slot) => [
@@ -128,7 +124,6 @@ export function ModuleDetails({ module: mod }) {
             </div>
           ))}
 
-          {/* Fulfils requirements */}
           {mod.fulfillRequirements && mod.fulfillRequirements.length > 0 && (
             <>
               <div className="details-divider" />
