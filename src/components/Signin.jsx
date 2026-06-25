@@ -35,9 +35,9 @@ function Signin() {
         
         
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-extrabold text-[#E95420] tracking-tight font-sans">
-            WhatToMod
-          </h1>
+          <h1 className="text-5xl font-extrabold text-[#E95420] tracking-tight font-['League_Spartan']">
+            What<span className="text-[#2564F8]">To</span>Mod
+            </h1>
           <p className="text-s font-bold tracking-widest text-gray-600 mt-2">
             Your one-stop NUS Module Planner
           </p>

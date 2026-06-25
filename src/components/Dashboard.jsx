@@ -1,5 +1,6 @@
 import { UserAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { LuUser } from 'react-icons/lu';
 import "@fontsource/league-spartan/700.css";
 
 function Dashboard() {
@@ -25,7 +26,12 @@ function Dashboard() {
             What<span style={{ color: "#2564F8" }}>To</span>Mod
         </h1>
         <div className="flex items-center gap-5">
-            <span className="text-sm text-gray-500 hidden sm:block">{session?.user?.email}</span>
+            <button
+            onClick={() => navigate("/profilePage")}
+            className="flex items-center gap-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl px-4 py-3 transition">
+            <LuUser size ={18} />
+            Profile
+            </button>
             <button
             onClick={handleSignOut}
             className="text-sm font-semibold text-white bg-[#E8541A] hover:bg-[#d14916] rounded-xl px-4 py-3 transition"

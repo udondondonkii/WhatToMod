@@ -4,6 +4,7 @@ import Signin from "./components/Signin";
 import Dashboard from "./components/Dashboard";
 import ModuleTree from "./components/ModuleTree";
 import Insights from "./components/SentAnalysis/Insights"
+import ProfilePage from "./components/ProfilePage";
 
 export const router = createBrowserRouter([
     {path: "/", element: <Navigate to="/signin" replace />},
@@ -11,5 +12,7 @@ export const router = createBrowserRouter([
     {path: "/signin", element: <Signin />},
     {path: "/dashboard", element: <Dashboard />},
     {path: "/moduleTree", element: <ModuleTree />},
-    {path: "/insights", element: <Insights />}
+    {path: "/insights", element: <Insights />},
+    {path: "/insights/:moduleCode", element: <Insights />},
+    {path: "/profilePage", element: <ProfilePage />}
 ]);

@@ -38,8 +38,8 @@ function Signup() {
         <div className="w-full max-w-md">
 
         <div className="text-center mb-8">
-            <h1 className="text-5xl font-extrabold text-[#E95420] tracking-tight">
-            WhatToMod
+            <h1 className="text-5xl font-extrabold text-[#E95420] tracking-tight font-['League_Spartan']">
+            What<span className="text-[#2564F8]">To</span>Mod
             </h1>
         </div>
 
