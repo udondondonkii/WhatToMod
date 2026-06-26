@@ -17,7 +17,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 const args = process.argv.slice(2);
 const codesArg = args.find((a) => a.startsWith("--codes="))?.slice(8);
 const limitArg = args.find((a) => a.startsWith("--limit="))?.slice(8);
-const LIMIT = limitArg ? parseInt(limitArg) : Infinity;
+const LIMIT = limitArg ? parseInt(limitArg) : 250;
 
 async function getPrioritizedModuleCodes() {
   if (codesArg) return codesArg.split(",").map((c) => c.trim().toUpperCase());
