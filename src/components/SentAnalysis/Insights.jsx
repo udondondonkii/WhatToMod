@@ -88,6 +88,7 @@ export default function Insights() {
                 <span className="module-code">{result.module.moduleCode}</span>
                 <span className="module-title">{result.module.title}</span>
               </div>
+
               <div className="module-tags">
                 <span className="mod-tag mc">{result.module.moduleCredit} MCs</span>
                 {result.module.semesterData.map((s) => (
@@ -102,13 +103,12 @@ export default function Insights() {
  
             <ReviewsList reviews={result.reviews} />
 
-            <ModuleDetails module={result.module} />
           </div>
         )}
       </main>
  
       <footer className="app-footer">
-        <p>Data from <a href="https://api.nusmods.com" target="_blank" rel="noopener noreferrer">NUSMods</a></p>
+        <p>Data from <a href={`https://nusmods.com/modules/${result?.module?.moduleCode}`} target="_blank" rel="noopener noreferrer">NUSMods</a></p>
       </footer>
     </div>
   );

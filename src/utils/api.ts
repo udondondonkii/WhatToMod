@@ -1,7 +1,5 @@
 import { supabase } from "../supabaseClient";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface ModuleCondensed {
   moduleCode: string;
   title: string;
@@ -72,7 +70,6 @@ export interface ModuleAPIResponse {
   sentiment: SentimentSummary;
 }
 
-// ─── Module list (from NUSMods API directly) ──────────────────────────────────
 
 let _moduleListCache: ModuleCondensed[] | null = null;
 
@@ -80,7 +77,7 @@ export async function fetchModuleList(): Promise<ModuleCondensed[]> {
   if (_moduleListCache) return _moduleListCache;
 
   const res = await fetch(
-    "https://api.nusmods.com/v2/2024-2025/moduleList.json"
+    "https://api.nusmods.com/v2/2025-2026/moduleList.json"
   );
   if (!res.ok) throw new Error("Failed to fetch module list from NUSMods");
 
@@ -89,18 +86,14 @@ export async function fetchModuleList(): Promise<ModuleCondensed[]> {
   return data;
 }
 
-// ─── Module detail (from NUSMods API directly) ────────────────────────────────
-
 export async function fetchModuleDetail(code: string): Promise<NUSModuleDetail> {
   const res = await fetch(
-    `https://api.nusmods.com/v2/2024-2025/modules/${code.toUpperCase()}.json`
+    `https://api.nusmods.com/v2/2025-2026/modules/${code.toUpperCase()}.json`
   );
   if (res.status === 404) throw new Error(`Module ${code} not found`);
   if (!res.ok) throw new Error("Failed to fetch module from NUSMods");
   return res.json();
 }
-
-// ─── Reviews (from Supabase) ──────────────────────────────────────────────────
 
 export async function fetchReviews(code: string): Promise<Review[]> {
   const { data, error } = await supabase
@@ -122,8 +115,6 @@ export async function fetchReviews(code: string): Promise<Review[]> {
     scrapedAt: r.scraped_at,
   }));
 }
-
-// ─── Sentiment (from Supabase) ────────────────────────────────────────────────
 
 export async function fetchSentiment(code: string): Promise<SentimentSummary> {
   const { data, error } = await supabase
@@ -172,16 +163,14 @@ function emptyFallback(moduleCode: string): SentimentSummary {
   return {
     moduleCode,
     reviewCount: 0,
-    workload:      { label: "Workload",       level: "No data", score: 0, descriptor: "Reviews not scraped yet" },
-    difficulty:    { label: "Difficulty",     level: "No data", score: 0, descriptor: "Reviews not scraped yet" },
-    expectedGrade: { label: "Expected grade", level: "No data", score: 0, descriptor: "Reviews not scraped yet" },
-    overallVibe:   { label: "Overall vibe",   level: "No data", score: 0, descriptor: "Reviews not scraped yet" },
+    workload:      { label: "Workload",       level: "No data", score: 0, descriptor: "No reviews yet" },
+    difficulty:    { label: "Difficulty",     level: "No data", score: 0, descriptor: "No reviews yet" },
+    expectedGrade: { label: "Expected grade", level: "No data", score: 0, descriptor: "No reviews yet" },
+    overallVibe:   { label: "Overall vibe",   level: "No data", score: 0, descriptor: "No reviews yet" },
     tips: [],
     generatedAt: new Date().toISOString(),
   };
 }
-
-// ─── Combined fetch (replaces the old /api/module/:code endpoint) ─────────────
 
 export async function fetchModule(code: string): Promise<ModuleAPIResponse> {
   const [module, reviews, sentiment] = await Promise.all([

@@ -15,14 +15,12 @@ export function useModuleSearch() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load full module list once on mount (for autocomplete)
   useEffect(() => {
     fetchModuleList()
       .then(setModuleList)
       .catch(() => console.warn("Could not load module list from backend"));
   }, []);
 
-  // Filter suggestions whenever query changes
   useEffect(() => {
     if (query.trim().length < 2) {
       setSuggestions([]);

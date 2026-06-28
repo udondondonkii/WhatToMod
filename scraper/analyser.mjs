@@ -7,12 +7,15 @@ config();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const classifier = await pipeline('sentiment-analysis', 'Xenova/distilbert-base-uncased-finetuned-sst-2-english');
 
-async function runAnalysis() {
-  console.log("[analyzer] Scanning database for modified review targets...");
+//for testing purposes
+const args = process.argv.slice(2);
+const codesArg = args.find((a) => a.startsWith("--codes="))?.slice(8);
 
-  // 1. Grab the latest review entry time per module code
-  const { data: rawReviews } = await supabase.from("reviews").select("module_code, scraped_at");
-  if (!rawReviews) return;
+async function runAnalysis() {
+  console.log("Scanning database for new reviews");
+
+  const rawReviews = await fetchAllRows("reviews", "module_code, scraped_at");
+  console.log(`Reviews fetched: ${rawReviews.length} rows`);
 
   const reviewTimeMap = {};
   rawReviews.forEach(r => {
@@ -21,42 +24,40 @@ async function runAnalysis() {
     }
   });
 
-  // 2. Grab current sentiment tracker records
-  const { data: sentiments } = await supabase.from("sentiment").select("module_code, workload_level, last_scraped_at");
+  const sentiments = await fetchAllRows("sentiment", "module_code, workload_level, last_scraped_at");
   const sentimentTimeMap = {};
   sentiments?.forEach(s => { 
-    // If workload_level is 'No data', it means it's newly scraped or has no metadata, force analysis.
     sentimentTimeMap[s.module_code] = s.workload_level === 'No data' ? null : s.last_scraped_at; 
   });
 
-  // 3. Dynamic Delta Target Selector: Find modules where raw reviews are newer than computed stats
-  const targetCodes = Object.keys(reviewTimeMap).filter(code => {
-    const lastAnalysedTime = sentimentTimeMap[code];
-    if (!lastAnalysedTime) return true; // Newly scraped module, needs initial model computations
-    return reviewTimeMap[code] > lastAnalysedTime; // Fresh text found that hasn't been analyzed yet
-  });
+  const targetCodes = codesArg
+    ? codesArg.split(",").map((c) => c.trim().toUpperCase())
+    : Object.keys(reviewTimeMap).filter(code => {
+        const lastAnalysedTime = sentimentTimeMap[code];
+        if (!lastAnalysedTime) return true;
+        return reviewTimeMap[code] > lastAnalysedTime;
+      });
 
   if (targetCodes.length === 0) {
-    console.log("[analyzer] Sentiment calculations are fully synchronized with raw review timestamps.");
+    console.log("No updates needed");
     return;
   }
 
-  console.log(`[analyzer] Processing sentiment calculations for ${targetCodes.length} outdated module shapes...`);
 
   for (const code of targetCodes) {
-    console.log(` -> Re-calculating: ${code}`);
+    console.log(`Recalculating: ${code}`);
     
     const { data: reviews } = await supabase.from("reviews").select("text").eq("module_code", code);
     
     if (!reviews || reviews.length === 0) {
-      console.log(`    [-] Reviews table clean out found for ${code}. Turning into placeholder.`);
+      console.log(`Adding placeholder for ${code}`);
       await supabase
         .from("sentiment")
         .update({
-          workload_level: 'Processed (0 reviews)', // Changing from 'No data' stops the analyzer loop
-          difficulty_level: 'No data',
-          grade_level: 'No data',
-          last_scraped_at: new Date().toISOString() // Locks the queue with the scraper
+          workload_level: 'No data yet', 
+          difficulty_level: 'No data yet',
+          grade_level: 'No dat yet',
+          last_scraped_at: new Date().toISOString() 
         })
         .eq("module_code", code);
       continue;
@@ -104,12 +105,12 @@ async function runAnalysis() {
     };
 
     const { error } = await supabase.from("sentiment").upsert(sentimentPayload, { onConflict: 'module_code' });
-    if (error) console.error(`  [!] Summary DB Upsert Error (${code}):`, error.message);
+    if (error) console.error(`Summary DB Upsert Error (${code}):`, error.message);
 
     if (global.gc) global.gc();
   }
 
-  console.log("[analyzer] All modules matching the update delta are fully up to date.");
+  console.log("Success: All modules are updated");
 }
 
 runAnalysis();

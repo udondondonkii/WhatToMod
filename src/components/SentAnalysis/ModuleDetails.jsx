@@ -58,7 +58,6 @@ export function ModuleDetails({ module: mod }) {
 
           <div className="details-divider" />
 
-          {/* Prerequisites / preclusions */}
           {(mod.prerequisite || mod.preclusion || mod.corequisite) && (
             <>
               <div className="details-reqs">

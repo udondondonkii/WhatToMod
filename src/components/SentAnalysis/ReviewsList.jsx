@@ -1,4 +1,3 @@
-// src/components/SentAnalysis/ReviewsList.tsx
 import { useState } from "react";
 
 

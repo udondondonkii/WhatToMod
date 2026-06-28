@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
+import ProtectedRoute from "./ProtectedRoute";
 import Signup from "./components/Signup";
 import Signin from "./components/Signin";
 import Dashboard from "./components/Dashboard";
@@ -10,9 +11,9 @@ export const router = createBrowserRouter([
     {path: "/", element: <Navigate to="/signin" replace />},
     {path: "/signup", element: <Signup />},
     {path: "/signin", element: <Signin />},
-    {path: "/dashboard", element: <Dashboard />},
-    {path: "/moduleTree", element: <ModuleTree />},
-    {path: "/insights", element: <Insights />},
-    {path: "/insights/:moduleCode", element: <Insights />},
-    {path: "/profilePage", element: <ProfilePage />}
+    {path: "/dashboard", element: <ProtectedRoute><Dashboard /></ProtectedRoute>},
+    {path: "/moduleTree", element: <ProtectedRoute><ModuleTree /></ProtectedRoute>},
+    {path: "/insights", element: <ProtectedRoute><Insights /></ProtectedRoute>},
+    {path: "/insights/:moduleCode", element: <ProtectedRoute><Insights /></ProtectedRoute>},
+    {path: "/profilePage", element: <ProtectedRoute><ProfilePage /></ProtectedRoute>}
 ]);

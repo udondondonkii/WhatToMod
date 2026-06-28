@@ -33,7 +33,6 @@ export function SentimentSummary({ sentiment }) {
     { key: "workload",      ...sentiment.workload },
     { key: "difficulty",    ...sentiment.difficulty },
     { key: "expectedGrade", ...sentiment.expectedGrade },
-    //{ key: "overallVibe",   ...sentiment.overallVibe },
   ];
 
   return (

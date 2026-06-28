@@ -22,17 +22,12 @@ const LIMIT = limitArg ? parseInt(limitArg) : 250;
 async function getPrioritizedModuleCodes() {
   if (codesArg) return codesArg.split(",").map((c) => c.trim().toUpperCase());
   
-  // 1. Fetch the master list of all current modules from NUSMods
   const res = await fetch("https://api.nusmods.com/v2/2025-2026/moduleList.json");
   const list = await res.json();
   const allCodes = list.map((m) => m.moduleCode);
 
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
   
-  console.log("[scraper] Querying database exclusion list...");
-  
-  // 2. Fix: Explicitly ask for modules scraped within the last 3 days. 
-  // We paginate up to 10,000 records to ensure we read your complete tracking history.
   const { data: recentlyScraped, error } = await supabase
     .from("sentiment")
     .select("module_code")
@@ -45,7 +40,6 @@ async function getPrioritizedModuleCodes() {
 
   const recentlyScrapedSet = new Set(recentlyScraped?.map(p => p.module_code) || []);
   
-  // 3. Filter down your backlog locally
   const backlog = allCodes.filter(code => !recentlyScrapedSet.has(code));
   
   return backlog.slice(0, LIMIT);
@@ -55,22 +49,33 @@ async function scrapeModule(browser, code) {
   const context = await browser.newContext({
     userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
   });
+  await context.route("**/*.{png,jpg,jpeg,svg,woff,woff2,gif}", route => route.abort());
   const page = await context.newPage();
 
   try {
     console.log(`Processing ${code}`);
     await page.goto(`https://nusmods.com/courses/${code}`, {
-      waitUntil: "load",
+      waitUntil: "domcontentloaded", 
       timeout: 25000,
     });
 
-    await page.waitForSelector("#disqus_thread", { timeout: 2000 }).catch(() => null);
+    const disqusContainer = await page
+      .waitForSelector("#disqus_thread", { timeout: 15000 })
+      .catch(() => null);
+
+    if (!disqusContainer) {
+      await context.close();
+      return { code, reviews: [], hasDisqus: false, isTimeout: false };
+    }
+
+    await disqusContainer.scrollIntoViewIfNeeded().catch(() => null);
 
     const iframeElement = await page
-      .waitForSelector("#disqus_thread iframe[src*='disqus.com']", { timeout: 1500 })
+      .waitForSelector("#disqus_thread iframe[src*='disqus.com']", { timeout: 15000 })
       .catch(() => null);
-    
+
     if (!iframeElement) {
+      console.log(`Error: No iframe found for ${code}`);
       await context.close();
       return { code, reviews: [], hasDisqus: false, isTimeout: false };
     }
@@ -82,7 +87,7 @@ async function scrapeModule(browser, code) {
     }
 
     const postsFound = await disqusFrame.waitForSelector(".post-message", { timeout: 4000 }).catch(() => null);
-    
+
     if (!postsFound) {
       await context.close();
       return { code, reviews: [], hasDisqus: true, isTimeout: false };
@@ -129,9 +134,8 @@ async function scrapeModule(browser, code) {
   }
 }
 
-
 async function pushRawData(code, reviews, hasDisqus) {
-  // Clear older reviews completely
+
   await supabase.from("reviews").delete().eq("module_code", code);
 
   const timestamp = new Date().toISOString();
@@ -142,7 +146,7 @@ async function pushRawData(code, reviews, hasDisqus) {
       console.error(`  [!] Supabase Reviews Insert Error (${code}):`, reviewError.message);
       return;
     }
-    console.log(`[DB] Successfully pushed ${reviews.length} fresh reviews for ${code}`);
+    console.log(`Successfully pushed ${reviews.length} fresh reviews for ${code}`);
 
     const { data: updateData, error: updateError } = await supabase
       .from("sentiment")
@@ -167,28 +171,27 @@ async function pushRawData(code, reviews, hasDisqus) {
   }
 
   if (reviews.length === 0) {
-    // Capture the potential database error here
+
     const { error: placeholderError } = await supabase.from("sentiment").upsert({
       module_code: code,
       review_count: 0,
       last_scraped_at: timestamp,
-      workload_level: 'Processed (0 reviews)', // Using this stops the analyzer loop
-      difficulty_level: 'No data',
-      grade_level: 'No data',
+      workload_level: 'No data yet', 
+      difficulty_level: 'No data yet',
+      grade_level: 'No data yet',
       tips: ["No reviews found yet for this module."]
     }, { onConflict: 'module_code' });
 
     if (placeholderError) {
       console.error(`[DATABASE WRITE FAILED] for ${code}:`, placeholderError.message);
     } else {
-      console.log(`[DB] No reviews found for ${code}. Saved 0-review placeholder row.`);
+      console.log(`No reviews found for ${code}, added placeholder`);
     }
   }
 }
 
-// Execution Block
 const targetModules = await getPrioritizedModuleCodes();
-console.log(`[scraper] Modules to be scraped: ${targetModules.length}`);
+console.log(`Modules to be scraped: ${targetModules.length}`);
 
 if (targetModules.length === 0) {
   console.log("All modules are fully up to date.");
@@ -200,7 +203,7 @@ const browser = await chromium.launch({
   args: ['--disable-dev-shm-usage', '--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']
 });
 
-const CONCURRENCY_LIMIT = process.env.GITHUB_ACTIONS ? 2 : 3; 
+const CONCURRENCY_LIMIT = process.env.GITHUB_ACTIONS ? 2 : 6; 
 
 for (let i = 0; i < targetModules.length; i += CONCURRENCY_LIMIT) {
   const batch = targetModules.slice(i, i + CONCURRENCY_LIMIT);
@@ -222,4 +225,4 @@ for (let i = 0; i < targetModules.length; i += CONCURRENCY_LIMIT) {
 }
 
 await browser.close();
-console.log(`\n[scraper] Scraping batch complete.`);
+console.log(`Scraping complete.`);
