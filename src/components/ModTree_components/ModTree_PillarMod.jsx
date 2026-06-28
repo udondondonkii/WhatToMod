@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ModuleButton from './ModTree_ModButton';
 
 export default function PillarDropdown({ pillarModule, selectedMods, selectedMajor, moduleTreeState, onToggleModule }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [activeOptionId, setActiveOptionId] = useState(() => {
+        const initialOption = pillarModule.options.find(opt => selectedMods.includes(opt.id));
+        return initialOption?.id ?? null;
+    });
 
-    // Derive selected option to drive button label and colour
-    const selectedOption = pillarModule.options.find(opt => selectedMods.includes(opt.id));
+    const selectedOption = pillarModule.options.find(opt => opt.id === activeOptionId)
+        || pillarModule.options.find(opt => selectedMods.includes(opt.id));
 
     return (
         <div style={{
@@ -69,7 +73,9 @@ export default function PillarDropdown({ pillarModule, selectedMods, selectedMaj
                                 isCompulsory={isCompulsory}
                                 moduleTreeState={moduleTreeState}
                                 onToggle={() => {
+                                    const willSelect = !isSelected;
                                     onToggleModule(option.id);
+                                    setActiveOptionId(willSelect ? option.id : null);
                                     setIsOpen(false); // Single-pick: close after selection
                                 }}
                             />

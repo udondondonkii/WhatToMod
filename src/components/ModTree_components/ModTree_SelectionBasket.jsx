@@ -10,7 +10,7 @@ export default function SelectedBasket({ selectedMods, selectedMajor, moduleData
                         Selected Modules
                     </h3>
                     <p style={{ margin: '8px 0 0', color: '#4B5563', fontSize: '0.9rem' }}>
-                        Total MCs: {selectedMods.length * 4}
+                        Total MCs in Basket: {selectedMods.length * 4}
                     </p>
                 </div>
                 <button
@@ -55,6 +55,7 @@ export default function SelectedBasket({ selectedMods, selectedMajor, moduleData
                                     isSelected={true}
                                     isCompulsory={isCompulsoryInBasket}
                                     onToggle={() => onToggleModule(id)}
+                                    moduleTreeState={moduleTreeState}
                                     fullWidth
                                 />
                             </div>

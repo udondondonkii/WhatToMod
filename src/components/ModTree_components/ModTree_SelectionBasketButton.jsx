@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchSentiment } from '../../utils/api';
 import { supabase } from '../../supabaseClient';
 
@@ -61,11 +62,16 @@ async function lookupModule(moduleCode) {
     return mod;
 }
 
-export default function SelectionBasketButton({ moduleCode, isSelected, isCompulsory, onToggle, fullWidth = false }) {
+export default function SelectionBasketButton({ moduleCode, isSelected, isCompulsory, onToggle, moduleTreeState = null, fullWidth = false }) {
     const [matchedModule, setMatchedModule] = useState(null);
     const [loadingModule, setLoadingModule] = useState(true);
     const [sentiment, setSentiment] = useState(null);
     const [isLoadingSentiment, setIsLoadingSentiment] = useState(false);
+
+    const handleDragStart = (event) => {
+        event.dataTransfer.setData('text/plain', moduleCode);
+        event.dataTransfer.effectAllowed = 'move';
+    };
 
     useEffect(() => {
         let isMounted = true;
@@ -176,9 +182,18 @@ export default function SelectionBasketButton({ moduleCode, isSelected, isCompul
         });
     };
 
+const linkState = moduleTreeState ? {
+        from: '/moduleTree',
+        moduleTreeState: {
+            ...moduleTreeState,
+            scrollPosition: typeof window !== 'undefined' ? window.scrollY : 0,
+        },
+    } : undefined;
+
     return (
-        <button
-            onClick={onToggle}
+        <div
+            draggable
+            onDragStart={handleDragStart}
             style={{
                 width: fullWidth ? '100%' : 'auto',
                 padding: '16px',
@@ -186,33 +201,73 @@ export default function SelectionBasketButton({ moduleCode, isSelected, isCompul
                 border: `2px solid ${borderColor}`,
                 backgroundColor: bgColor,
                 color: textColor,
-                cursor: 'pointer',
+                cursor: 'grab',
                 textAlign: 'left',
                 transition: 'all 0.15s ease-in-out',
-                boxShadow: isSelected ? '0 8px 24px rgba(29, 158, 117, 0.08)' : 'none'
+                boxShadow: isSelected ? '0 8px 24px rgba(29, 158, 117, 0.08)' : 'none',
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
             }}
         >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: '#1A1A18' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                <Link
+                    to={`/insights/${encodeURIComponent(moduleCode)}`}
+                    state={linkState}
+                    style={{
+                        fontSize: '14px',
+                        fontWeight: '700',
+                        color: '#1A1A18',
+                        textDecoration: 'none',
+                        flex: 1,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        cursor: 'pointer'
+                    }}
+                >
                     {matchedModule.label}
-                </div>
-                {matchedModule.description && (
-                    <div style={{ fontSize: '12px', color: '#5F5E5A', lineHeight: '1.4' }}>
-                        {matchedModule.description}
-                    </div>
-                )}
-                {isLoadingSentiment && (
-                    <div style={{ fontSize: '12px', color: '#7A766F' }}>
-                        Loading review insights...
-                    </div>
-                )}
-                {renderSentimentRows()}
-                {sentiment && (
-                    <div style={{ fontSize: '11px', color: '#7A766F' }}>
-                        Based on {sentiment.reviewCount} reviews
-                    </div>
-                )}
+                </Link>
+                <button
+                    type="button"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onToggle?.();
+                    }}
+                    style={{
+                        border: 'none',
+                        background: 'rgba(255,255,255,0.9)',
+                        color: '#6b7280',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '999px',
+                        cursor: 'pointer',
+                        fontWeight: '700',
+                        display: 'grid',
+                        placeItems: 'center normal',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+                    }}
+                >
+                    X
+                </button>
             </div>
-        </button>
+            {matchedModule.description && (
+                <div style={{ fontSize: '12px', color: '#5F5E5A', lineHeight: '1.4' }}>
+                    {matchedModule.description}
+                </div>
+            )}
+            {isLoadingSentiment && (
+                <div style={{ fontSize: '12px', color: '#7A766F' }}>
+                    Loading review insights...
+                </div>
+            )}
+            {renderSentimentRows()}
+            {sentiment && (
+                <div style={{ fontSize: '11px', color: '#7A766F' }}>
+                    Based on {sentiment.reviewCount} reviews
+                </div>
+            )}
+        </div>
     );
 }
