@@ -1,48 +1,96 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { rawSupabaseData } from '../../assets/MockModuleDatabase';
+import { supabase } from '../../supabaseClient';
 import { fetchSentiment } from '../../utils/api';
 
 const sentimentCache = {}
 
-// Create dictionary key-value pair for efficient Module finding
-const moduleDatabase = rawSupabaseData.reduce((acc, mod) => {
-    if (!acc[mod.id]) acc[mod.id] = mod
+// Module lookup cache – populated lazily on first hover
+const moduleLookupCache = {}
 
-    if (mod.isPillar) {
-        mod.options.forEach(option => {
-            if (!acc[option.id]) acc[option.id] = option
-        })
+// Converts a raw Supabase row into the app's module shape
+function rowToModule(row) {
+    return {
+        id: row.id,
+        label: row.label,
+        level: row.level,
+        description: row.description,
+        majors: row.majors ?? [],
+        compulsoryFor: row.compulsory_for ?? [],
+        orGroupId: row.or_group_id ?? undefined,
+        isPillar: row.is_pillar,
+        isSingleModulePillar: row.is_single_module_pillar,
+        pillarLabel: row.pillar_label ?? undefined,
+        isLevel4000Pathway: row.is_level4000_pathway,
+        options: row.options ?? undefined,
+        optionA: row.option_a ?? undefined,
+        optionB: row.option_b ?? undefined,
+    };
+}
+
+async function lookupModule(moduleCode) {
+    const key = moduleCode.toLowerCase();
+    if (moduleLookupCache[key]) return moduleLookupCache[key];
+
+    const { data, error } = await supabase
+        .from('modules')
+        .select('*')
+        .eq('id', key)
+        .single();
+
+    if (error || !data) {
+        // Also search inside pillar options – fetch all and scan
+        const { data: all } = await supabase.from('modules').select('id,options,option_a,option_b');
+        let found = null;
+        for (const row of all ?? []) {
+            if (row.options) {
+                const match = row.options.find(o => o.id === key);
+                if (match) { found = match; break; }
+            }
+            if (row.option_a) {
+                const b1 = row.option_a.basket1?.options?.find(o => o.id === key);
+                const b2 = row.option_a.basket2?.options?.find(o => o.id === key);
+                if (b1 || b2) { found = b1 ?? b2; break; }
+            }
+            if (row.option_b) {
+                const match = row.option_b.options?.find(o => o.id === key);
+                if (match) { found = match; break; }
+            }
+        }
+        moduleLookupCache[key] = found ?? null;
+        return moduleLookupCache[key];
     }
 
-    if (mod.isLevel4000Pathway) {
-        mod.optionA.basket1.options.forEach(option => {
-            if (!acc[option.id]) acc[option.id] = option
-        })
-        mod.optionA.basket2.options.forEach(option => {
-            if (!acc[option.id]) acc[option.id] = option
-        })
-        mod.optionB.options.forEach(option => {
-            if (!acc[option.id]) acc[option.id] = option
-        })
-    }
+    const mod = rowToModule(data);
+    moduleLookupCache[key] = mod;
+    return mod;
+}
 
-    return acc
-}, {})
-
-export default function ModuleButton({ moduleCode, isSelected, isCompulsory, moduleTreeState, onToggle }) {
+export default function ModuleButton({ moduleCode, isSelected, isCompulsory, moduleTreeState, onToggle, fullWidth = false }) {
     const [isHovered, setIsHovered] = useState(false)
     const [sentiment, setSentiment] = useState(null)
     const [isLoadingSentiment, setIsLoadingSentiment] = useState(false)
+    const [matchedModule, setMatchedModule] = useState(null)
+    const [loadingModule, setLoadingModule] = useState(true)
     const hoverTimeout = useRef(null)
 
-    const matchedModule = moduleDatabase[moduleCode]
-    if (!matchedModule) return <button disabled>Unknown</button>
+    // Fetch module metadata from Supabase on mount
+    useEffect(() => {
+        let isMounted = true;
+        lookupModule(moduleCode).then(mod => {
+            if (isMounted) {
+                setMatchedModule(mod);
+                setLoadingModule(false);
+            }
+        });
+        return () => { isMounted = false; };
+    }, [moduleCode]);
 
-    // Color system: compulsory uses teal, optional uses coral
     const bgColor = isCompulsory ? '#E1F5EE' : '#FAECE7';
     const textColor = isCompulsory ? '#1D9E75' : '#D85A30';
-    const borderColor = isSelected ? (isCompulsory ? '#1D9E75' : '#D85A30') : 'rgba(0,0,0,0.1)';
+    const borderColor = isSelected
+        ? (isCompulsory ? '#1D9E75' : '#D85A30')
+        : 'rgba(0,0,0,0.1)';
 
     const clearHoverTimeout = () => {
         if (hoverTimeout.current) {
@@ -51,11 +99,7 @@ export default function ModuleButton({ moduleCode, isSelected, isCompulsory, mod
         }
     }
 
-    const handleMouseEnter = () => {
-        clearHoverTimeout()
-        setIsHovered(true)
-    }
-
+    const handleMouseEnter = () => { clearHoverTimeout(); setIsHovered(true); }
     const handleMouseLeave = () => {
         clearHoverTimeout()
         hoverTimeout.current = window.setTimeout(() => {
@@ -64,35 +108,40 @@ export default function ModuleButton({ moduleCode, isSelected, isCompulsory, mod
         }, 50)
     }
 
+    // Fetch sentiment on hover
     useEffect(() => {
         if (!isHovered || sentiment) return
 
         const cacheKey = moduleCode.toUpperCase()
         const cached = sentimentCache[cacheKey]
-        if (cached) {
-            setSentiment(cached)
-            return
-        }
+        if (cached) { setSentiment(cached); return; }
 
         let isMounted = true
         setIsLoadingSentiment(true)
 
         fetchSentiment(cacheKey)
             .then((data) => {
-                // console.log('Sentiment response:', data) for debugging purposes
                 if (isMounted) {
                     sentimentCache[cacheKey] = data
                     setSentiment(data)
                 }
             })
-            .finally(() => {
-                if (isMounted) setIsLoadingSentiment(false)
-            })
+            .finally(() => { if (isMounted) setIsLoadingSentiment(false) })
 
-        return () => {
-            isMounted = false
-        }
+        return () => { isMounted = false }
     }, [isHovered, moduleCode, sentiment])
+
+    if (loadingModule) {
+        return (
+            <button disabled style={{ padding: '10px 16px', borderRadius: '10px', opacity: 0.5 }}>
+                …
+            </button>
+        );
+    }
+
+    if (!matchedModule) {
+        return <button disabled>Unknown</button>;
+    }
 
     const renderSentimentRows = () => {
         if (!sentiment) return null
@@ -126,21 +175,22 @@ export default function ModuleButton({ moduleCode, isSelected, isCompulsory, mod
             onMouseLeave={handleMouseLeave}
             style={{ position: 'relative', display: 'inline-block' }}
         >
-            <button 
+            <button
                 onClick={onToggle}
-                style={{ 
-                    padding: '10px 16px', borderRadius: '10px', cursor: 'pointer', 
+                style={{
+                    width: fullWidth ? '100%' : 'auto',
+                    padding: '10px 16px', borderRadius: '10px', cursor: 'pointer',
                     backgroundColor: bgColor,
                     color: textColor,
                     border: `2px solid ${borderColor}`,
                     fontWeight: isSelected ? '600' : '500',
                     opacity: isSelected ? 1 : 0.8,
-                    transition: 'all 0.15s ease-in-out'
+                    transition: 'all 0.15s ease-in-out',
+                    textAlign: 'left'
                 }}>
                 {matchedModule.label}
             </button>
 
-            {/* Tooltip Box - Future proof structure for additional module info */}
             {isHovered && (
                 <div
                     onMouseEnter={handleMouseEnter}
@@ -162,7 +212,6 @@ export default function ModuleButton({ moduleCode, isSelected, isCompulsory, mod
                         color: '#1a1a18',
                         lineHeight: '1.5'
                     }}>
-                    {/* Module Title */}
                     <Link
                         to={`/insights/${encodeURIComponent(matchedModule.label)}`}
                         state={{
@@ -183,13 +232,11 @@ export default function ModuleButton({ moduleCode, isSelected, isCompulsory, mod
                     >
                         {matchedModule.label}
                     </Link>
-                    
-                    {/* Module Description - Main content */}
+
                     <p style={{ margin: '0', color: '#5F5E5A', fontSize: '12px' }}>
                         {matchedModule.description}
                     </p>
 
-                    {/* Sentiment category bars */}
                     {isLoadingSentiment && (
                         <p style={{ margin: '10px 0 0', color: '#7a766f', fontSize: '12px' }}>
                             Loading review insights...

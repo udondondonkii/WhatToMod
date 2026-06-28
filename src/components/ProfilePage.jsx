@@ -3,12 +3,7 @@ import Select from 'react-select';
 import { useNavigate } from "react-router-dom";
 import { supabase } from '../supabaseClient';
 import { LuUser } from 'react-icons/lu';
-import courses from '../assets/Courses.json'
 import "@fontsource/league-spartan/700.css";
-
-const majorOptions = courses.programmes.map(p => ({ value: p, label: p }));
-const secondMajorOptions = courses.secondMajors.map(sm => ({ value: sm, label: sm }));
-const minorOptions = courses.minors.map(m => ({ value: m, label: m }));
 
 const GRADES = [
   "A+", "A", "A-", "B+", "B", "B-", "C+", "C", "D+", "D", "F",
@@ -58,8 +53,42 @@ export default function ProfilePage() {
   const [moduleOptions, setModuleOptions] = useState([]);
   const [modulesLoading, setModulesLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState(null); // 'success' | 'error' | null
+  const [saveStatus, setSaveStatus] = useState(null);
 
+  // Course option lists fetched from Supabase
+  const [majorOptions, setMajorOptions] = useState([]);
+  const [secondMajorOptions, setSecondMajorOptions] = useState([]);
+  const [minorOptions, setMinorOptions] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+
+  // Fetch programmes / minors / second majors from Supabase
+  useEffect(() => {
+    async function fetchCourses() {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('name, type')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching courses:', error);
+      } else {
+        setMajorOptions(
+          data.filter(c => c.type === 'programme').map(c => ({ value: c.name, label: c.name }))
+        );
+        setSecondMajorOptions(
+          data.filter(c => c.type === 'second_major').map(c => ({ value: c.name, label: c.name }))
+        );
+        setMinorOptions(
+          data.filter(c => c.type === 'minor').map(c => ({ value: c.name, label: c.name }))
+        );
+      }
+      setCoursesLoading(false);
+    }
+
+    fetchCourses();
+  }, []);
+
+  // Fetch NUSMods module list for the Past Grades picker
   useEffect(() => {
     fetch('https://api.nusmods.com/v2/2025-2026/moduleList.json')
       .then(res => res.json())
@@ -73,12 +102,13 @@ export default function ProfilePage() {
       .finally(() => setModulesLoading(false));
   }, []);
 
+  // Load existing profile from Supabase
   useEffect(() => {
     const fetchProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
@@ -88,7 +118,7 @@ export default function ProfilePage() {
         setProfile({
           major: data.major || '',
           second_major: data.second_major || '',
-          minor: data.minor || ''
+          minor: data.minor || '',
         });
         setGrades(data.past_grades || []);
       }
@@ -99,7 +129,6 @@ export default function ProfilePage() {
 
   const addGradeRow = () => setGrades([...grades, { moduleCode: '', grade: '' }]);
   const removeGradeRow = (index) => setGrades(grades.filter((_, i) => i !== index));
-
   const updateGradeRow = (index, key, value) => {
     const next = [...grades];
     next[index] = { ...next[index], [key]: value };
@@ -124,8 +153,8 @@ export default function ProfilePage() {
     });
 
     if (error) {
-  console.error("Supabase Save Error:", error); // This will reveal the specific Postgres error code
-}
+      console.error("Supabase Save Error:", error);
+    }
 
     setSaving(false);
     setSaveStatus(error ? 'error' : 'success');
@@ -156,10 +185,10 @@ export default function ProfilePage() {
       {/* Page content */}
       <main className="max-w-3xl mx-auto px-8 py-12">
         <div className="mb-10">
-          
           <h2 className="text-2xl font-bold text-[#2564F8]">
-            <LuUser size = {30} />
-            My Profile</h2>
+            <LuUser size={30} />
+            My Profile
+          </h2>
           <p className="text-sm text-gray-500 mt-1">Manage your academic information</p>
         </div>
 
@@ -175,6 +204,7 @@ export default function ProfilePage() {
                 styles={selectStyles}
                 placeholder="e.g. Computer Science"
                 isClearable
+                isLoading={coursesLoading}
                 value={programmeValue('major')}
                 onChange={(selected) => setProfile({ ...profile, major: selected?.value || '' })}
               />
@@ -187,6 +217,7 @@ export default function ProfilePage() {
                 styles={selectStyles}
                 placeholder="e.g. Economics"
                 isClearable
+                isLoading={coursesLoading}
                 value={programmeValue('second_major')}
                 onChange={(selected) => setProfile({ ...profile, second_major: selected?.value || '' })}
               />
@@ -199,6 +230,7 @@ export default function ProfilePage() {
                 styles={selectStyles}
                 placeholder="e.g. Statistics"
                 isClearable
+                isLoading={coursesLoading}
                 value={programmeValue('minor')}
                 onChange={(selected) => setProfile({ ...profile, minor: selected?.value || '' })}
               />
