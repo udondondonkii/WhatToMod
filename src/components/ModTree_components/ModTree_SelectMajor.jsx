@@ -25,14 +25,17 @@ export default function SelectMajor({ selectedMajor, onMajorChange }) {
                 fontFamily: 'inherit',
                 fontSize: '14px',
                 cursor: 'pointer',
-                boxShadow: 'inset 0 1px 2px rgba(15, 23, 42, 0.04)'
+                boxShadow: 'inset 0 1px 2px rgba(15, 23, 42, 0.04)',
+                textAlign: 'center',
+                textAlignLast: 'center'
             }}>
-                <option value="Empty-Major">-</option>
-                <option value="Artificial Intelligence">Artificial Intelligence</option>
-                <option value="Business Artificial Intelligence Systems">Business Artificial Intelligence Systems</option>
-                <option value="BZA-Major">Business Analytics</option>
-                <option value="Computer Science">Computer Science</option>
-                <option value="DSA-Major">Data Science & Analytics</option>
+                <option value="Empty-Major" style={{ backgroundColor: '#ffffff', textAlign: 'center', color: '#111827' }}>-</option>
+                <option value="Artificial Intelligence" style={{ backgroundColor: '#ffffff', textAlign: 'center', color: '#111827' }}>Artificial Intelligence</option>
+                <option value="Business Artificial Intelligence Systems" style={{ backgroundColor: '#ffffff', textAlign: 'center', color: '#111827' }}>Business Artificial Intelligence Systems</option>
+                <option value="BZA-Major" style={{ backgroundColor: '#ffffff', textAlign: 'center', color: '#111827' }}>Business Analytics</option>
+                <option value="Computer Science" style={{ backgroundColor: '#ffffff', textAlign: 'center', color: '#111827' }}>Computer Science</option>
+                <option value="Information Security" style={{ backgroundColor: '#ffffff', textAlign: 'center', color: '#111827' }}>Information Security</option>
+                <option value="DSA-Major" style={{ backgroundColor: '#ffffff', textAlign: 'center', color: '#111827' }}>Data Science & Analytics (Click This Option for Optimised Demo)</option>
             </select>
         </div>
     )

@@ -220,7 +220,7 @@ export default function ModuleTreePage() {
 
 
             {/* Module planner */} {/*To be abstracted into its own component later */}
-            <div style={{marginTop: '25vh', fontSize: '32px', fontWeight: '600', color: '#1f2937', marginBottom: '12px', paddingLeft: '16px' }}>
+            <div style={{marginTop: '50vh', fontSize: '32px', fontWeight: '600', color: '#1f2937', marginBottom: '12px', paddingLeft: '16px' }}>
                 Module Planner
             </div>
             <div

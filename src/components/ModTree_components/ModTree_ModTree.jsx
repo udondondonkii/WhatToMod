@@ -3,6 +3,38 @@ import ModuleButton from './ModTree_ModButton';
 import PillarDropdown from './ModTree_PillarMod';
 import Level4000Pathway from './ModTree_DSA4K';
 
+function satisfiesLevel4000Pathway(moduleConfig, selectedMods) {
+    const basketCount = Math.max(1, Number(moduleConfig?.number_of_basket ?? 2));
+
+    if (Array.isArray(moduleConfig?.pathways) && moduleConfig.pathways.length > 0) {
+        return moduleConfig.pathways.some((pathway) => {
+            if (Array.isArray(pathway?.baskets)) {
+                return pathway.baskets.slice(0, basketCount).every((basket) => basket?.options?.some((option) => selectedMods.includes(option.id)));
+            }
+
+            if (Array.isArray(pathway?.options)) {
+                return pathway.options.some((option) => selectedMods.includes(option.id));
+            }
+
+            return false;
+        });
+    }
+
+    const basketModules = Array.isArray(moduleConfig?.optionA?.baskets)
+        ? moduleConfig.optionA.baskets
+        : Object.entries(moduleConfig?.optionA || {})
+            .filter(([key, value]) => key.startsWith('basket') && value && typeof value === 'object')
+            .sort(([left], [right]) => Number(left.replace(/\D/g, '')) - Number(right.replace(/\D/g, '')))
+            .map(([, value]) => value);
+
+    const courseworkComplete = basketModules.slice(0, basketCount).every((basket) => basket?.options?.some((option) => selectedMods.includes(option.id)));
+    const honoursProjectComplete = Array.isArray(moduleConfig?.optionB?.options)
+        ? moduleConfig.optionB.options.some((option) => selectedMods.includes(option.id))
+        : false;
+
+    return courseworkComplete || honoursProjectComplete;
+}
+
 export default function ModuleTree({ modulesByLvl, selectedMods, selectedMajor, moduleTreeState, onToggleModule }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'stretch' }}>
@@ -34,10 +66,7 @@ export default function ModuleTree({ modulesByLvl, selectedMods, selectedMajor, 
                     } else if (mod.isSingleModulePillar) {
                         requirements.push(selectedMods.includes(mod.id));
                     } else if (mod.isLevel4000Pathway) {
-                        const b1 = mod.optionA?.basket1?.options?.some(o => selectedMods.includes(o.id)) ?? false;
-                        const b2 = mod.optionA?.basket2?.options?.some(o => selectedMods.includes(o.id)) ?? false;
-                        const bB = mod.optionB?.options?.some(o => selectedMods.includes(o.id)) ?? false;
-                        requirements.push((b1 && b2) || bB);
+                        requirements.push(satisfiesLevel4000Pathway(mod, selectedMods));
                     } else {
                         requirements.push(selectedMods.includes(mod.id));
                     }
