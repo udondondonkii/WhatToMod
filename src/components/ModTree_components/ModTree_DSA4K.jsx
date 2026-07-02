@@ -36,7 +36,7 @@ function getBasketModules(pathwayConfig, basketCount) {
     return basketEntries.slice(0, basketCount).map(([, basket]) => basket);
 }
 
-export default function Level4000Pathway({ nodeData, selectedMods, moduleTreeState, onToggleModule }) {
+export default function Level4000Pathway({ nodeData, selectedMods, selectedMajor, moduleTreeState, onToggleModule }) {
     const [activeTrack, setActiveTrack] = useState('A');
     const radioGroupName = `pathway4k-${nodeData.id}`;
     const pathwayDefinitions = getPathwayDefinitions(nodeData);
@@ -60,9 +60,9 @@ export default function Level4000Pathway({ nodeData, selectedMods, moduleTreeSta
         <div style={{
             border: '1px solid rgba(0,0,0,0.1)',
             borderRadius: '14px',
-            padding: '16px',
+            padding: '12px',
             backgroundColor: '#ffffff',
-            maxWidth: '420px',
+            maxWidth: '360px',
             margin: '0 auto',
             boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
         }}>
@@ -70,12 +70,12 @@ export default function Level4000Pathway({ nodeData, selectedMods, moduleTreeSta
                 {nodeData.label}
             </h4>
 
-            <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '16px', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '12px', gap: '8px' }}>
                 {pathwayDefinitions.map(({ value, label }) => {
                     const isActive = activeTrack === value;
                     return (
                         <label key={value} style={{
-                            flex: 1, padding: '10px',
+                            flex: 1, padding: '8px', fontSize: '12px',
                             border: `2px solid ${isActive ? '#185FA5' : 'rgba(0,0,0,0.1)'}`,
                             borderRadius: '10px', cursor: 'pointer', textAlign: 'center',
                             backgroundColor: isActive ? '#E6F1FB' : '#F7F6F2',
@@ -97,7 +97,7 @@ export default function Level4000Pathway({ nodeData, selectedMods, moduleTreeSta
                 })}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
                 {basketModules.length > 0 ? (
                     <>
                         <p style={{ fontSize: '12px', margin: '0', color: '#666', fontStyle: 'italic' }}>
@@ -108,6 +108,7 @@ export default function Level4000Pathway({ nodeData, selectedMods, moduleTreeSta
                                 key={basketModule?.id || `${activePathwayIndex}-${index}`}
                                 pillarModule={basketModule}
                                 selectedMods={selectedMods}
+                                selectedMajor={selectedMajor}
                                 moduleTreeState={moduleTreeState}
                                 onToggleModule={onToggleModule}
                             />

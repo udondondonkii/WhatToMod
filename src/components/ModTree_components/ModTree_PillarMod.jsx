@@ -8,6 +8,11 @@ export default function PillarDropdown({ pillarModule, selectedMods, selectedMaj
         return initialOption?.id ?? null;
     });
 
+    useEffect(() => {
+        const matchingOption = pillarModule.options.find(opt => selectedMods.includes(opt.id));
+        setActiveOptionId(matchingOption?.id ?? null);
+    }, [pillarModule.options, selectedMods]);
+
     const selectedOption = pillarModule.options.find(opt => opt.id === activeOptionId)
         || pillarModule.options.find(opt => selectedMods.includes(opt.id));
 
@@ -15,9 +20,9 @@ export default function PillarDropdown({ pillarModule, selectedMods, selectedMaj
         <div style={{
             border: '1px solid rgba(0,0,0,0.1)',
             borderRadius: '10px',
-            padding: '12px',
+            padding: '10px',
             backgroundColor: '#ffffff',
-            width: '180px',
+            width: '150px',
             textAlign: 'center',
             boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
         }}>
@@ -25,7 +30,7 @@ export default function PillarDropdown({ pillarModule, selectedMods, selectedMaj
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
-                    padding: '10px 16px',
+                    padding: '8px 12px',
                     borderRadius: '10px',
                     cursor: 'pointer',
                     backgroundColor: selectedOption ? '#E1F5EE' : '#F7F6F2',
@@ -36,7 +41,8 @@ export default function PillarDropdown({ pillarModule, selectedMods, selectedMaj
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    transition: 'all 0.15s ease-in-out'
+                    transition: 'all 0.15s ease-in-out',
+                    fontSize: '12px'
                 }}
             >
                 <span>{selectedOption ? selectedOption.label : pillarModule.label}</span>
@@ -46,11 +52,11 @@ export default function PillarDropdown({ pillarModule, selectedMods, selectedMaj
             {/* Option list — auto-closes after a selection (single-pick UX) */}
             {isOpen && (
                 <div style={{
-                    marginTop: '10px',
+                    marginTop: '8px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '8px',
-                    padding: '8px',
+                    gap: '6px',
+                    padding: '6px',
                     backgroundColor: '#F7F6F2',
                     borderRadius: '8px',
                     border: '1px solid rgba(0,0,0,0.06)'
@@ -72,6 +78,7 @@ export default function PillarDropdown({ pillarModule, selectedMods, selectedMaj
                                 isSelected={isSelected}
                                 isCompulsory={isCompulsory}
                                 moduleTreeState={moduleTreeState}
+                                compact
                                 onToggle={() => {
                                     const willSelect = !isSelected;
                                     onToggleModule(option.id);

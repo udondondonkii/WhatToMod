@@ -169,8 +169,8 @@ export default function SelectionBasketButton({ moduleCode, isSelected, isCompul
             const pct = Math.round(Math.max(0, Math.min(1, aspect.score)) * 100);
             const barColor = label === 'Workload' ? '#D85A30' : label === 'Difficulty' ? '#185FA5' : '#1D9E75';
             return (
-                <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '600', color: '#42413F' }}>
+                <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '9px', fontWeight: '600', color: '#42413F' }}>
                         <span>{label}</span>
                         <span>{pct}%</span>
                     </div>
@@ -196,7 +196,7 @@ const linkState = moduleTreeState ? {
             onDragStart={handleDragStart}
             style={{
                 width: fullWidth ? '100%' : 'auto',
-                padding: '16px',
+                padding: '10px',
                 borderRadius: '14px',
                 border: `2px solid ${borderColor}`,
                 backgroundColor: bgColor,
@@ -208,7 +208,7 @@ const linkState = moduleTreeState ? {
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '10px'
+                gap: '6px'
             }}
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
@@ -216,9 +216,9 @@ const linkState = moduleTreeState ? {
                     to={`/insights/${encodeURIComponent(moduleCode)}`}
                     state={linkState}
                     style={{
-                        fontSize: '14px',
-                        fontWeight: '700',
-                        color: '#1A1A18',
+                        fontSize: '10px',
+                        fontWeight: '750',
+                        color: '#0000FF',
                         textDecoration: 'none',
                         flex: 1,
                         whiteSpace: 'nowrap',
@@ -227,7 +227,7 @@ const linkState = moduleTreeState ? {
                         cursor: 'pointer'
                     }}
                 >
-                    {matchedModule.label}
+                    <u>{matchedModule.label}</u>
                 </Link>
                 <button
                     type="button"
@@ -239,32 +239,33 @@ const linkState = moduleTreeState ? {
                         border: 'none',
                         background: 'rgba(255,255,255,0.9)',
                         color: '#6b7280',
-                        width: '28px',
-                        height: '28px',
+                        width: '22px',
+                        height: '22px',
                         borderRadius: '999px',
                         cursor: 'pointer',
                         fontWeight: '700',
                         display: 'grid',
                         placeItems: 'center normal',
-                        boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                        fontSize: '10px',
                     }}
                 >
                     X
                 </button>
             </div>
             {matchedModule.description && (
-                <div style={{ fontSize: '12px', color: '#5F5E5A', lineHeight: '1.4' }}>
+                <div style={{ fontSize: '9px', color: '#5F5E5A', lineHeight: '1.4' }}>
                     {matchedModule.description}
                 </div>
             )}
             {isLoadingSentiment && (
-                <div style={{ fontSize: '12px', color: '#7A766F' }}>
+                <div style={{ fontSize: '9px', color: '#7A766F' }}>
                     Loading review insights...
                 </div>
             )}
             {renderSentimentRows()}
             {sentiment && (
-                <div style={{ fontSize: '11px', color: '#7A766F' }}>
+                <div style={{ fontSize: '8px', color: '#7A766F' }}>
                     Based on {sentiment.reviewCount} reviews
                 </div>
             )}
