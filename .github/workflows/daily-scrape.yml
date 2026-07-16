@@ -40,8 +40,9 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         # explicit garbage collection flag to keep runtime memory stable
-        run: node --expose-gc analyser.mjs
+        run: node --expose-gc analyserLLM.mjs
 
       - name: Log completion
         run: echo "Scraping and analysis pipeline completed at $(date)"

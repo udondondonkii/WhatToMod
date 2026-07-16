@@ -64,10 +64,55 @@ export interface SentimentSummary {
   generatedAt: string;
 }
 
+export type AspectName =
+  | "lectures" | "assignments" | "exams" | "group_projects"
+  | "content_difficulty" | "staff_teaching" | "workload_balance" | "tutorials";
+
+export type AspectSentiment = "positive" | "negative" | "mixed" | "neutral";
+
+export interface ModuleAspectInsight {
+  aspect: AspectName;
+  sentiment: AspectSentiment;
+  note: string | null;
+}
+
+export type ExamFormat =
+  | "open_book" | "closed_book" | "take_home" | "proctored_online" | "no_exam" | "unclear";
+
+export type ReadingsHelpful = "helpful" | "not_helpful" | "mixed" | "not_mentioned";
+
+export interface ModuleKeyInfo {
+  estimatedHoursPerWeek: number | null;
+  examFormat: ExamFormat;
+  readingsHelpful: ReadingsHelpful;
+  isFluffMod: boolean | null;
+}
+
+export type SuggestionCategory =
+  | "teaching_style" | "resource_request" | "assessment_feedback" | "workload_adjustment" | "other";
+
+export interface ModuleSuggestion {
+  category: SuggestionCategory;
+  suggestion: string;
+}
+
+export type ProfessorSemester =
+  | "Semester 1" | "Semester 2" | "Special Term I" | "Special Term II" | "Unclear";
+
+export interface ProfessorMention {
+  name: string;
+  semester: ProfessorSemester;
+  mentionCount: number;
+}
+
 export interface ModuleAPIResponse {
   module: NUSModuleDetail;
   reviews: Review[];
   sentiment: SentimentSummary;
+  moduleAspects: ModuleAspectInsight[];
+  keyInfo: ModuleKeyInfo | null;
+  suggestions: ModuleSuggestion[];
+  professors: ProfessorMention[];
 }
 
 
@@ -172,12 +217,206 @@ function emptyFallback(moduleCode: string): SentimentSummary {
   };
 }
 
+export async function fetchModuleAspects(code: string): Promise<ModuleAspectInsight[]> {
+  const { data, error } = await supabase
+    .from("module_aspects")
+    .select("aspect, sentiment, note")
+    .eq("module_code", code.toUpperCase());
+
+  if (error) {
+    console.error("[api] Error fetching module aspects:", error.message);
+    return [];
+  }
+
+  return (data ?? []) as ModuleAspectInsight[];
+}
+
+export async function fetchKeyInfo(code: string): Promise<ModuleKeyInfo | null> {
+  const { data, error } = await supabase
+    .from("module_key_info")
+    .select("*")
+    .eq("module_code", code.toUpperCase())
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) console.error("[api] Error fetching key info:", error.message);
+    return null;
+  }
+
+  return {
+    estimatedHoursPerWeek: data.estimated_hours_per_week,
+    examFormat: data.exam_format,
+    readingsHelpful: data.readings_helpful,
+    isFluffMod: data.is_fluff_mod,
+  };
+}
+
+export async function fetchSuggestions(code: string): Promise<ModuleSuggestion[]> {
+  const { data, error } = await supabase
+    .from("module_suggestions")
+    .select("category, suggestion")
+    .eq("module_code", code.toUpperCase());
+
+  if (error) {
+    console.error("[api] Error fetching module suggestions:", error.message);
+    return [];
+  }
+
+  return (data ?? []) as ModuleSuggestion[];
+}
+
+export async function fetchProfessors(code: string): Promise<ProfessorMention[]> {
+  const { data, error } = await supabase
+    .from("module_professors")
+    .select("professor_name, semester, mention_count")
+    .eq("module_code", code.toUpperCase())
+    .order("mention_count", { ascending: false });
+
+  if (error) {
+    console.error("[api] Error fetching professors:", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((p) => ({
+    name: p.professor_name,
+    semester: p.semester ?? "Unclear",
+    mentionCount: p.mention_count,
+  }));
+}
+
+export interface ProfessorModuleMention {
+  moduleCode: string;
+  semesters: string[];
+  mentionCount: number;
+}
+
+export interface ProfessorRelatedMention {
+  name: string;
+  moduleCode: string;
+  semesters: ProfessorSemester[];
+  mentionCount: number;
+}
+
+export interface ProfessorProfile {
+  name: string;
+  modules: ProfessorModuleMention[];
+  relatedModules: ProfessorRelatedMention[];
+  reviewMentions: Review[];
+}
+
+function groupRelatedMentions(
+  rows: { name: string; moduleCode: string; semester: ProfessorSemester; mentionCount: number }[]
+): ProfessorRelatedMention[] {
+  const map = new Map<string, ProfessorRelatedMention>();
+  for (const r of rows) {
+    const key = `${r.name.toLowerCase()}|${r.moduleCode}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.mentionCount += r.mentionCount;
+      if (!existing.semesters.includes(r.semester)) existing.semesters.push(r.semester);
+    } else {
+      map.set(key, { name: r.name, moduleCode: r.moduleCode, semesters: [r.semester], mentionCount: r.mentionCount });
+    }
+  }
+  return [...map.values()].sort((a, b) => b.mentionCount - a.mentionCount);
+}
+
+export async function fetchProfessorReviewMentions(name: string): Promise<Review[]> {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("*")
+    .ilike("text", `%${name}%`)
+    .order("scraped_at", { ascending: false });
+
+  if (error) {
+    console.error("[api] Error fetching professor review mentions:", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    moduleCode: r.module_code,
+    text: r.text,
+    semester: r.semester ?? "",
+    scrapedAt: r.scraped_at,
+  }));
+}
+
+const PROFESSOR_MENTION_COLUMNS = "professor_name, module_code, semester, mention_count";
+
+export async function fetchProfessorProfile(name: string, fromModuleCode?: string): Promise<ProfessorProfile> {
+  const term = name.trim();
+  const target = term.toLowerCase();
+
+  // module_professors is only consulted for alternate-name (moniker) matches now —
+  // it's a bounded, filtered query so it can't hit PostgREST's default 1000-row cap
+  // the way an unfiltered `.select()` over the whole table would.
+  const [containsRes, reviewMentions] = await Promise.all([
+    term.length >= 3
+      ? supabase.from("module_professors").select(PROFESSOR_MENTION_COLUMNS).ilike("professor_name", `%${term}%`).limit(2000)
+      : Promise.resolve({ data: [], error: null }),
+    fetchProfessorReviewMentions(term),
+  ]);
+
+  if (containsRes.error) console.error("[api] Error fetching related professor mentions:", containsRes.error.message);
+
+  // The reviews that literally mention this name are the source of truth for
+  // "Teaches" — it's the same text the name was extracted from in the first
+  // place, so unlike module_professors it can't lag behind or get capped.
+  const moduleMentionCounts = new Map<string, number>();
+  const moduleSemesters = new Map<string, Set<string>>();
+  for (const r of reviewMentions) {
+    moduleMentionCounts.set(r.moduleCode, (moduleMentionCounts.get(r.moduleCode) ?? 0) + 1);
+    if (r.semester) {
+      if (!moduleSemesters.has(r.moduleCode)) moduleSemesters.set(r.moduleCode, new Set());
+      moduleSemesters.get(r.moduleCode)!.add(r.semester);
+    }
+  }
+
+  // Guarantee the module the user actually clicked through from always shows,
+  // even on the off chance the name isn't verbatim in any single review's text.
+  if (fromModuleCode && !moduleMentionCounts.has(fromModuleCode)) {
+    moduleMentionCounts.set(fromModuleCode, 0);
+  }
+
+  const modules: ProfessorModuleMention[] = [...moduleMentionCounts.entries()]
+    .map(([moduleCode, mentionCount]) => {
+      const semesters = moduleSemesters.get(moduleCode);
+      return {
+        moduleCode,
+        semesters: semesters && semesters.size > 0 ? [...semesters] : ["Unclear"],
+        mentionCount,
+      };
+    })
+    .sort((a, b) => b.mentionCount - a.mentionCount);
+
+  const relatedRows = (containsRes.data ?? [])
+    .filter((p) => p.professor_name.toLowerCase().trim() !== target)
+    .map((p) => ({
+      name: p.professor_name,
+      moduleCode: p.module_code,
+      semester: (p.semester ?? "Unclear") as ProfessorSemester,
+      mentionCount: p.mention_count,
+    }));
+
+  // A module already confirmed via review text shouldn't also show up as a
+  // "maybe" under a differently-spelled name.
+  const confirmedCodes = new Set(modules.map((m) => m.moduleCode));
+  const relatedModules = groupRelatedMentions(relatedRows).filter((m) => !confirmedCodes.has(m.moduleCode));
+
+  return { name, modules, relatedModules, reviewMentions };
+}
+
 export async function fetchModule(code: string): Promise<ModuleAPIResponse> {
-  const [module, reviews, sentiment] = await Promise.all([
+  const [module, reviews, sentiment, moduleAspects, keyInfo, suggestions, professors] = await Promise.all([
     fetchModuleDetail(code),
     fetchReviews(code),
     fetchSentiment(code),
+    fetchModuleAspects(code),
+    fetchKeyInfo(code),
+    fetchSuggestions(code),
+    fetchProfessors(code),
   ]);
 
-  return { module, reviews, sentiment };
+  return { module, reviews, sentiment, moduleAspects, keyInfo, suggestions, professors };
 }

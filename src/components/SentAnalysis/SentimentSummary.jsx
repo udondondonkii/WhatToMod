@@ -5,7 +5,7 @@ const ASPECT_COLORS = {
   overallVibe:   "#534AB7",
 };
 
-function AspectCard({ aspectKey, label, level, score, descriptor }) {
+function AspectCard({ aspectKey, label, level, score, descriptor, showBar = true }) {
   const barColor = ASPECT_COLORS[aspectKey] ?? "#534AB7";
   const pct = Math.round(Math.max(0, Math.min(1, score)) * 100);
 
@@ -13,16 +13,18 @@ function AspectCard({ aspectKey, label, level, score, descriptor }) {
     <div className="aspect-card">
       <p className="aspect-label">{label}</p>
       <p className="aspect-level">{level}</p>
-      <div className="aspect-bar-track">
-        <div
-          className="aspect-bar-fill"
-          style={{ width: `${pct}%`, background: barColor }}
-          role="progressbar"
-          aria-valuenow={pct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        />
-      </div>
+      {showBar && (
+        <div className="aspect-bar-track">
+          <div
+            className="aspect-bar-fill"
+            style={{ width: `${pct}%`, background: barColor }}
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          />
+        </div>
+      )}
       <p className="aspect-desc">{descriptor ?? ""}</p>
     </div>
   );
@@ -39,7 +41,7 @@ export function SentimentSummary({ sentiment }) {
     <section className="sentiment-card" aria-label="AI sentiment summary">
       <header className="sentiment-header">
         <div className="sentiment-title-row">
-          <h2 className="sentiment-title">General Consensus</h2>
+          <h2 className="sentiment-title">Summary of Reviews</h2>
         </div>
         <span className="sentiment-count">
           Based on {sentiment.reviewCount} review{sentiment.reviewCount !== 1 ? "s" : ""}
@@ -55,6 +57,7 @@ export function SentimentSummary({ sentiment }) {
             level={a.level}
             score={a.score}
             descriptor={a.descriptor}
+            showBar={a.key !== "expectedGrade"}
           />
         ))}
       </div>
