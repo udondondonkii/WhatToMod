@@ -1,11 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import SelectMajor from './ModTree_components/ModTree_SelectMajor';
 import ModuleTree from './ModTree_components/ModTree_ModTree';
 import SelectedBasket from './ModTree_components/ModTree_SelectionBasket';
 import SelectionBasketButton from './ModTree_components/ModTree_SelectionBasketButton';
- 
+
+const SEMESTER_LABELS = ['Y1S1', 'Y1S2', 'Y2S1', 'Y2S2', 'Y3S1', 'Y3S2', 'Y4S1', 'Y4S2'];
+
+function createEmptyPlannerModules(labels = SEMESTER_LABELS) {
+    return Object.fromEntries(labels.map(label => [label, []]));
+}
+
 // Converts a raw Supabase module row back into the shape the rest of the app expects
 function rowToModule(row) {
     return {
@@ -58,15 +64,11 @@ export default function ModuleTreePage() {
         location.state?.selectedMods ?? []
     );
  
-    const semesterLabels = ['Y1S1', 'Y1S2', 'Y2S1', 'Y2S2', 'Y3S1', 'Y3S2', 'Y4S1', 'Y4S2'];
-
     const [allModules, setAllModules] = useState([]);    // full list from Supabase
     const [moduleDatabase, setModuleDatabase] = useState({}); // flat id→module dict
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [plannerModules, setPlannerModules] = useState(
-        () => Object.fromEntries(semesterLabels.map(label => [label, []]))
-    );
+    const [plannerModules, setPlannerModules] = useState(() => createEmptyPlannerModules());
  
     // Fetch all modules from Supabase once on mount
     useEffect(() => {
@@ -114,7 +116,7 @@ export default function ModuleTreePage() {
  
     const handleClearSelectedMods = () => {
         setSelectedMods([]);
-        setPlannerModules(() => Object.fromEntries(semesterLabels.map(label => [label, []])));
+        setPlannerModules(() => createEmptyPlannerModules());
     };
 
     const plannerModuleIds = Object.values(plannerModules).flat();
@@ -142,13 +144,16 @@ export default function ModuleTreePage() {
         }));
     };
  
-    const filteredModules = allModules.filter(
-        mod => mod.majors && mod.majors.includes(selectedMajor)
+    const moduleTreeState = useMemo(() => ({ selectedMajor, selectedMods }), [selectedMajor, selectedMods]);
+
+    const filteredModules = useMemo(() =>
+        allModules.filter(mod => mod.majors && mod.majors.includes(selectedMajor)),
+        [allModules, selectedMajor]
     );
  
-    const modulesByLvl = [1000, 2000, 3000, 4000].map(lvl =>
+    const modulesByLvl = useMemo(() => [1000, 2000, 3000, 4000].map(lvl =>
         filteredModules.filter(mod => mod.level === lvl)
-    );
+    ), [filteredModules]);
  
     if (loading) {
         return (
@@ -168,7 +173,7 @@ export default function ModuleTreePage() {
  
     return (
         <div className="min-h-screen bg-[#F7F6F2]">
-                    <div style={{ marginBottom: '16px' }}>
+                    <div style={{ marginBottom: '16px'}}>
                 <button
                     onClick={() => navigate('/dashboard')}
                     style={{
@@ -184,34 +189,35 @@ export default function ModuleTreePage() {
                     Back
                 </button>
             </div>
-            <div style={{ fontFamily: 'sans-serif', padding: '20px', backgroundColor: '#F7F6F2', position: 'relative', width: '100%' }}>
+            <div style={{ fontFamily: 'sans-serif', padding: '40px', backgroundColor: '#F7F6F2', width: '100%', boxSizing: 'border-box', position: 'center', }}>
                 <SelectMajor selectedMajor={selectedMajor} onMajorChange={setSelectedMajor} />
- 
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px', width: '100%' }}>
-                    <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
- 
-                        {selectedMajor !== 'Empty-Major' ? (
-                            <ModuleTree
-                                modulesByLvl={modulesByLvl}
-                                selectedMods={selectedMods}
-                                selectedMajor={selectedMajor}
-                                moduleTreeState={{ selectedMajor, selectedMods }}
-                                onToggleModule={handleToggleModule}
-                            />
-                        ) : (
-                            <div style={{ textAlign: 'center', padding: '40px', color: '#666', fontStyle: 'italic' }}>
-                                Please select a major from the dropdown above to display your graduation pathway tree.
-                            </div>
-                        )}
+
+                <div style={{ width: '100%', maxWidth: 'calc(100vw - 320px)', margin: '0 auto', boxSizing: 'border-box' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                        <div style={{ width: '100%', maxWidth: '1160px' }}>
+                            {selectedMajor !== 'Empty-Major' ? (
+                                <ModuleTree
+                                    modulesByLvl={modulesByLvl}
+                                    selectedMods={selectedMods}
+                                    selectedMajor={selectedMajor}
+                                    moduleTreeState={moduleTreeState}
+                                    onToggleModule={handleToggleModule}
+                                />
+                            ) : (
+                                <div style={{ textAlign: 'center', padding: '40px', color: '#666', fontStyle: 'italic' }}>
+                                    Please select a major from the dropdown above to display your graduation pathway tree.
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
- 
-                <div style={{ position: 'fixed', top: '110px', right: '20px', width: '320px', zIndex: 50 }}>
+
+                <div style={{ position: 'fixed', top: '120px', right: '16px', width: '200px', maxWidth: 'calc(100vw - 32px)', zIndex: 50 }}>
                     <SelectedBasket
                         selectedMods={basketVisibleMods}
                         selectedMajor={selectedMajor}
                         moduleDatabase={moduleDatabase}
-                        moduleTreeState={{ selectedMajor, selectedMods }}
+                        moduleTreeState={moduleTreeState}
                         onToggleModule={handleToggleModule}
                         onClearAll={handleClearSelectedMods}
                     />
@@ -233,7 +239,7 @@ export default function ModuleTreePage() {
                 }}
             >
                 <div style={{ display: 'flex', gap: '12px', minWidth: 'max-content', paddingBottom: '8px' }}>
-                    {semesterLabels.map((label) => {
+                    {SEMESTER_LABELS.map((label) => {
                         const semesterModules = plannerModules[label] ?? [];
 
                         return (
@@ -314,7 +320,7 @@ export default function ModuleTreePage() {
                                                         isSelected={selectedMods.includes(moduleId)}
                                                         isCompulsory={isCompulsoryInPlanner}
                                                         onToggle={() => handleToggleModule(moduleId)}
-                                                        moduleTreeState={{ selectedMajor, selectedMods }}
+                                                        moduleTreeState={moduleTreeState}
                                                         fullWidth
                                                     />
                                                 </div>

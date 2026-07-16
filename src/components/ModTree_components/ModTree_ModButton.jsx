@@ -66,7 +66,7 @@ async function lookupModule(moduleCode) {
     return mod;
 }
 
-export default function ModuleButton({ moduleCode, isSelected, isCompulsory, moduleTreeState, onToggle, fullWidth = false }) {
+export default function ModuleButton({ moduleCode, isSelected, isCompulsory, moduleTreeState, onToggle, fullWidth = false, compact = false }) {
     const [isHovered, setIsHovered] = useState(false)
     const [sentiment, setSentiment] = useState(null)
     const [isLoadingSentiment, setIsLoadingSentiment] = useState(false)
@@ -133,7 +133,7 @@ export default function ModuleButton({ moduleCode, isSelected, isCompulsory, mod
 
     if (loadingModule) {
         return (
-            <button disabled style={{ padding: '10px 16px', borderRadius: '10px', opacity: 0.5 }}>
+            <button disabled style={{ padding: compact ? '8px 12px' : '10px 16px', borderRadius: '10px', opacity: 0.5, fontSize: compact ? '12px' : '14px' }}>
                 …
             </button>
         );
@@ -179,14 +179,16 @@ export default function ModuleButton({ moduleCode, isSelected, isCompulsory, mod
                 onClick={onToggle}
                 style={{
                     width: fullWidth ? '100%' : 'auto',
-                    padding: '10px 16px', borderRadius: '10px', cursor: 'pointer',
+                    padding: compact ? '8px 12px' : '10px 16px', borderRadius: '10px', cursor: 'pointer',
                     backgroundColor: bgColor,
                     color: textColor,
                     border: `2px solid ${borderColor}`,
                     fontWeight: isSelected ? '600' : '500',
                     opacity: isSelected ? 1 : 0.8,
                     transition: 'all 0.15s ease-in-out',
-                    textAlign: 'left'
+                    textAlign: 'left',
+                    fontSize: compact ? '12px' : '14px',
+                    lineHeight: 1.3
                 }}>
                 {matchedModule.label}
             </button>

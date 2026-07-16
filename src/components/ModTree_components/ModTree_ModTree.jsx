@@ -35,62 +35,65 @@ function satisfiesLevel4000Pathway(moduleConfig, selectedMods) {
     return courseworkComplete || honoursProjectComplete;
 }
 
+function isModuleSelected(moduleId, selectedMods) {
+    return selectedMods.includes(moduleId);
+}
+
+function getLayerCompletionState(layer, selectedMods) {
+    const orGroupIds = [...new Set(layer.map(mod => mod.orGroupId).filter(Boolean))];
+    const requirements = [];
+
+    orGroupIds.forEach((groupId) => {
+        const groupModules = layer.filter(mod => mod.orGroupId === groupId);
+        const anySelected = groupModules.some((groupMod) =>
+            groupMod.isPillar
+                ? groupMod.options?.some(option => isModuleSelected(option.id, selectedMods))
+                : isModuleSelected(groupMod.id, selectedMods)
+        );
+        requirements.push(anySelected);
+    });
+
+    layer.filter(mod => !mod.orGroupId).forEach((mod) => {
+        if (mod.isPillar) {
+            requirements.push(Boolean(mod.options?.some(option => isModuleSelected(option.id, selectedMods))));
+        } else if (mod.isSingleModulePillar) {
+            requirements.push(isModuleSelected(mod.id, selectedMods));
+        } else if (mod.isLevel4000Pathway) {
+            requirements.push(satisfiesLevel4000Pathway(mod, selectedMods));
+        } else {
+            requirements.push(isModuleSelected(mod.id, selectedMods));
+        }
+    });
+
+    return {
+        layerComplete: requirements.length > 0 && requirements.every(Boolean),
+    };
+}
+
 export default function ModuleTree({ modulesByLvl, selectedMods, selectedMajor, moduleTreeState, onToggleModule }) {
     return (
-        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'stretch' }}>
+        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', gap: '10px', width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
             {modulesByLvl.map((layer, layerIndex) => {
                 const renderedGroups = new Set();
-
-                // ── Layer completion logic ────────────────────────────────────────────
-                // Each item in `requirements` is a boolean. The layer turns green
-                // only when every requirement is satisfied.
-                const orGroupIds = [...new Set(layer.map(m => m.orGroupId).filter(Boolean))];
-                const requirements = [];
-
-                // orGroups: satisfied when at least one member is selected.
-                // Handles both plain modules and isPillar members (checks options, not id).
-                orGroupIds.forEach((gid) => {
-                    const groupModules = layer.filter(m => m.orGroupId === gid);
-                    const anySelected = groupModules.some(gm =>
-                        gm.isPillar
-                            ? gm.options?.some(o => selectedMods.includes(o.id))
-                            : selectedMods.includes(gm.id)
-                    );
-                    requirements.push(anySelected);
-                });
-
-                // Non-grouped modules: evaluated individually by type
-                layer.filter(m => !m.orGroupId).forEach((mod) => {
-                    if (mod.isPillar) {
-                        requirements.push(Boolean(mod.options?.some(o => selectedMods.includes(o.id))));
-                    } else if (mod.isSingleModulePillar) {
-                        requirements.push(selectedMods.includes(mod.id));
-                    } else if (mod.isLevel4000Pathway) {
-                        requirements.push(satisfiesLevel4000Pathway(mod, selectedMods));
-                    } else {
-                        requirements.push(selectedMods.includes(mod.id));
-                    }
-                });
-
-                const layerComplete = requirements.length > 0 && requirements.every(Boolean);
+                const { layerComplete } = getLayerCompletionState(layer, selectedMods);
 
                 return (
                     <div
                         key={layerIndex}
                         style={{
-                            display: 'flex', flexDirection: 'column', gap: '30px',
-                            alignItems: 'center', flex: 1,
+                            display: 'flex', flexDirection: 'column', gap: '16px',
+                            alignItems: 'center', flex: 1, minWidth: 0,
                             backgroundColor: layerComplete ? '#E1F5EE' : 'transparent',
-                            padding: '12px', borderRadius: '10px',
+                            padding: '10px', borderRadius: '10px',
                             transition: 'background-color 0.15s ease'
                         }}
                     >
-                        <div style={{ color: '#1a1a18', textAlign: 'center', fontWeight: '600', fontSize: '14px' }}>
+                        <div style={{ color: '#1a1a18', textAlign: 'center', fontWeight: '600', fontSize: '12px' }}>
                             Level {(layerIndex + 1)}000 Modules
                         </div>
 
                         <div style={{
-                            display: 'flex', flexDirection: 'column', gap: '30px',
+                            display: 'flex', flexDirection: 'column', gap: '16px',
                             alignItems: 'center', justifyContent: 'center', flex: 1, width: '100%'
                         }}>
                             {layer.map((modInTree) => {
@@ -101,7 +104,7 @@ export default function ModuleTree({ modulesByLvl, selectedMods, selectedMajor, 
                                 // ── isPillar ──────────────────────────────────────────
                                 if (modInTree.isPillar) {
                                     return (
-                                        <div key={modInTree.id} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40px' }}>
+                                        <div key={modInTree.id} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '34px' }}>
                                             <PillarDropdown
                                                 pillarModule={modInTree}
                                                 selectedMods={selectedMods}
@@ -119,11 +122,11 @@ export default function ModuleTree({ modulesByLvl, selectedMods, selectedMajor, 
                                     return (
                                         <div key={modInTree.id} style={{
                                             border: '1px solid rgba(0,0,0,0.1)',
-                                            borderRadius: '10px', padding: '12px',
+                                            borderRadius: '10px', padding: '10px',
                                             backgroundColor: '#ffffff', textAlign: 'center',
-                                            width: '180px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+                                            width: '150px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
                                         }}>
-                                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#185FA5', marginBottom: '8px', textTransform: 'uppercase' }}>
+                                            <div style={{ fontSize: '10px', fontWeight: '600', color: '#185FA5', marginBottom: '6px', textTransform: 'uppercase' }}>
                                                 {modInTree.pillarLabel} Pillar
                                             </div>
                                             <ModuleButton
@@ -131,6 +134,7 @@ export default function ModuleTree({ modulesByLvl, selectedMods, selectedMajor, 
                                                 isSelected={isSelected}
                                                 isCompulsory={isCompulsory}
                                                 moduleTreeState={moduleTreeState}
+                                                compact
                                                 onToggle={() => onToggleModule(modInTree.id)}
                                             />
                                         </div>
@@ -144,6 +148,7 @@ export default function ModuleTree({ modulesByLvl, selectedMods, selectedMajor, 
                                             <Level4000Pathway
                                                 nodeData={modInTree}
                                                 selectedMods={selectedMods}
+                                                selectedMajor={selectedMajor}
                                                 moduleTreeState={moduleTreeState}
                                                 onToggleModule={onToggleModule}
                                             />
@@ -161,13 +166,13 @@ export default function ModuleTree({ modulesByLvl, selectedMods, selectedMajor, 
                                     return (
                                         <div key={groupId} style={{
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            position: 'relative', paddingLeft: '65px', minHeight: '110px'
+                                            position: 'relative', paddingLeft: '50px', minHeight: '90px'
                                         }}>
                                             <div style={{ position: 'absolute', left: 0, display: 'flex', alignItems: 'center' }}>
-                                                <span style={{ fontSize: '11px', fontWeight: '600', color: '#5F5E5A', marginRight: '6px' }}>One of</span>
-                                                <div style={{ width: '12px', height: '75px', border: '2px solid rgba(0,0,0,0.1)', borderRight: 'none', borderRadius: '6px 0 0 6px' }} />
+                                                <span style={{ fontSize: '10px', fontWeight: '600', color: '#5F5E5A', marginRight: '6px' }}>One of</span>
+                                                <div style={{ width: '10px', height: '60px', border: '2px solid rgba(0,0,0,0.1)', borderRight: 'none', borderRadius: '6px 0 0 6px' }} />
                                             </div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
                                                 {groupModules.map((groupMod) => (
                                                     <ModuleButton
                                                         key={groupMod.id}
@@ -175,6 +180,7 @@ export default function ModuleTree({ modulesByLvl, selectedMods, selectedMajor, 
                                                         isSelected={selectedMods.includes(groupMod.id)}
                                                         isCompulsory={groupMod.compulsoryFor?.includes(selectedMajor)}
                                                         moduleTreeState={moduleTreeState}
+                                                        compact
                                                         onToggle={() => onToggleModule(groupMod.id)}
                                                     />
                                                 ))}
@@ -191,6 +197,7 @@ export default function ModuleTree({ modulesByLvl, selectedMods, selectedMajor, 
                                             isSelected={selectedMods.includes(modInTree.id)}
                                             isCompulsory={isCompulsory}
                                             moduleTreeState={moduleTreeState}
+                                            compact
                                             onToggle={() => onToggleModule(modInTree.id)}
                                         />
                                     </div>
