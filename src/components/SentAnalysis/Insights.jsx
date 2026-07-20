@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useModuleSearch } from "../../hooks/useModuleSearch";
 import { SearchBar } from "./SearchBar";
@@ -6,9 +6,12 @@ import { SentimentSummary } from "./SentimentSummary";
 import { ReviewsList } from "./ReviewsList";
 import { ModuleDetails } from "./ModuleDetails";
 import { SkeletonLoader } from "./SkeletonLoader";
+import { AspectBreakdown } from "./AspectBreakdown";
 import "./SentDash.css";
 
 export default function Insights() {
+  const [activeTab, setActiveTab] = useState("overview");
+  
   const {
     query, setQuery,
     suggestions, setSuggestions,
@@ -40,8 +43,8 @@ export default function Insights() {
           <button id="back-button" onClick={() => {
               if (location.state?.from === '/moduleTree' && location.state.moduleTreeState) {
                 navigate('/moduleTree', { state: location.state.moduleTreeState });
-              } else if (window.history.length > 1) {
-                navigate(-1);
+              } else if (moduleCode) {
+                navigate('/insights');
               } else {
                 navigate('/dashboard');
               }
@@ -68,7 +71,7 @@ export default function Insights() {
       <main className="main" ref={resultsRef}>
         {!loading && !result && !error && (
           <div className="empty-state">
-            <p className="empty-heading">Search for a module to get started</p>
+            <p className="empty-heading">Search for any module</p>
           </div>
         )}
  
@@ -98,11 +101,43 @@ export default function Insights() {
               </div>
               <p className="module-desc">{result.module.description}</p>
             </div>
+            
+            <div className="tab-bar" role="tablist">
+              <button
+                role="tab"
+                aria-selected={activeTab === "overview"}
+                className={`tab-button tab-overview ${activeTab === "overview" ? "active" : ""}`}
+                onClick={() => setActiveTab("overview")}
+              >
+                Overview
+              </button>
+              <button
+                role="tab"
+                aria-selected={activeTab === "aspects"}
+                className={`tab-button tab-aspects ${activeTab === "aspects" ? "active" : ""}`}
+                onClick={() => setActiveTab("aspects")}
+              >
+                LLM Curated Insights
+              </button>
+            </div>
  
-            <SentimentSummary sentiment={result.sentiment} />
+            {activeTab === "overview" && (
+              <>
+                <SentimentSummary sentiment={result.sentiment} />
+                <ReviewsList reviews={result.reviews} />
+              </>
+            )}
  
-            <ReviewsList reviews={result.reviews} />
-
+            {activeTab === "aspects" && (
+              <AspectBreakdown
+                moduleCode={result.module.moduleCode}
+                moduleAspects={result.moduleAspects}
+                keyInfo={result.keyInfo}
+                suggestions={result.suggestions}
+                professors={result.professors}
+              />
+            )}
+ 
           </div>
         )}
       </main>

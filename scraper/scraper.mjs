@@ -18,6 +18,7 @@ const args = process.argv.slice(2);
 const codesArg = args.find((a) => a.startsWith("--codes="))?.slice(8);
 const limitArg = args.find((a) => a.startsWith("--limit="))?.slice(8);
 const LIMIT = limitArg ? parseInt(limitArg) : Infinity;
+const FORCE_ALL = args.includes("--all");
 
 async function getPrioritizedModuleCodes() {
   if (codesArg) return codesArg.split(",").map((c) => c.trim().toUpperCase());
@@ -26,19 +27,17 @@ async function getPrioritizedModuleCodes() {
   const list = await res.json();
   const allCodes = list.map((m) => m.moduleCode);
 
-  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-  
-  const { data: recentlyScraped, error } = await supabase
-    .from("sentiment")
-    .select("module_code")
-    .gt("last_scraped_at", threeDaysAgo)
-    .range(0, 9999);
-
-  if (error) {
-    console.error("[!] Failed to fetch exclusion list from DB:", error.message);
+  if (FORCE_ALL) {
+    console.log("Overriding exclusions");
+    return allCodes.slice(0, LIMIT);
   }
 
-  const recentlyScrapedSet = new Set(recentlyScraped?.map(p => p.module_code) || []);
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+  
+  const recentlyScraped = await fetchAllRows("sentiment", "module_code", (query) =>
+    query.gt("last_scraped_at", threeDaysAgo)
+  );
+  const recentlyScrapedSet = new Set(recentlyScraped.map(p => p.module_code));
   
   const backlog = allCodes.filter(code => !recentlyScrapedSet.has(code));
   
@@ -57,7 +56,7 @@ async function fetchAllRows(table, selectCols, applyFilters) {
 
     if (error) {
       console.error(`[!] Failed fetching ${table} at offset ${from}:`, error.message);
-      break;
+      throw new Error(`Failed fetching ${table} at offset ${from}: ${error.message}`);
     }
     if (!data || data.length === 0) break;
 

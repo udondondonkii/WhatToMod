@@ -5,6 +5,7 @@ import Signin from "./components/Signin";
 import Dashboard from "./components/Dashboard";
 import ModuleTree from "./components/ModuleTree";
 import Insights from "./components/SentAnalysis/Insights"
+import LecturerPage from "./components/SentAnalysis/LecturerPage";
 import ProfilePage from "./components/ProfilePage";
 
 export const router = createBrowserRouter([
@@ -15,5 +16,6 @@ export const router = createBrowserRouter([
     {path: "/moduleTree", element: <ProtectedRoute><ModuleTree /></ProtectedRoute>},
     {path: "/insights", element: <ProtectedRoute><Insights /></ProtectedRoute>},
     {path: "/insights/:moduleCode", element: <ProtectedRoute><Insights /></ProtectedRoute>},
+    {path: "/professor/:name", element: <ProtectedRoute><LecturerPage /></ProtectedRoute>},
     {path: "/profilePage", element: <ProtectedRoute><ProfilePage /></ProtectedRoute>}
 ]);

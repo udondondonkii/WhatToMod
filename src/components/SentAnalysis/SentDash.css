@@ -605,3 +605,181 @@ button { cursor: pointer; font-family: var(--font); }
   .details-grid { grid-template-columns: 1fr 1fr; }
 }
  
+/* --- Aspect Breakdown Container --- */
+.aspect-breakdown { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 1.25rem; 
+}
+
+/* --- Tab bar: full-width segmented control, color-coded per tab --- */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  margin-bottom: 4px;
+}
+.tab-button {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 12px;
+  margin: 0;
+  border: none;
+  border-radius: calc(var(--radius-md) - 3px);
+  background: transparent;
+  color: var(--text-secondary);
+  text-align: center;
+  transition: background-color 0.15s, color 0.15s;
+}
+.tab-button:not(.active):hover { background: var(--bg-surface); }
+.tab-button.tab-overview:not(.active):hover { color: var(--blue-dark); }
+.tab-button.tab-aspects:not(.active):hover  { color: var(--purple-dark); }
+
+.tab-button.active { font-weight: 600; }
+.tab-button.tab-overview.active { color: var(--blue-dark); background: var(--blue-bg); }
+.tab-button.tab-aspects.active  { color: var(--purple-dark); background: var(--purple-bg); }
+
+/* --- Empty state, styled like .empty-reviews --- */
+.aspect-breakdown-empty {
+  padding: 2rem;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+  background: var(--bg-muted);
+  border-radius: var(--radius-md);
+}
+
+/* --- Professors --- */
+.professors-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.professor-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.professor-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.professor-chip-link {
+  transition: border-color 0.15s, color 0.15s;
+}
+.professor-chip-link:hover {
+  border-color: var(--purple);
+  text-decoration: none;
+}
+.professor-chip-link:hover .professor-name { color: var(--purple-dark); }
+
+.lecturer-mod-chip {
+  border: none;
+  font-family: var(--font);
+  transition: filter 0.15s;
+}
+.lecturer-mod-chip:hover { filter: brightness(0.93); }
+/* --- Professors, grouped by semester --- */
+.professors-by-sem {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.professor-sem-group { display: flex; flex-direction: column; gap: 6px; }
+.professor-sem-heading {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--purple-dark);
+  background: var(--purple-bg);
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  width: fit-content;
+}
+
+/* --- Aspect Pills Grid --- */
+.aspect-pill-grid { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+  gap: 12px; 
+}
+
+.aspect-pill-card { 
+  background: var(--bg-surface); 
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg); 
+  padding: 16px; 
+}
+
+.aspect-pill-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 8px;
+}
+
+.aspect-pill-name { 
+  font-weight: 600; 
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.aspect-pill-badge { 
+  font-size: 0.7rem; 
+  font-weight: 600;
+  padding: 2px 10px; 
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+
+/* Sentiment Colors for Badges */
+.aspect-pill-badge.positive { background: var(--teal-bg); color: var(--teal-dark); }
+.aspect-pill-badge.negative { background: var(--coral-bg); color: var(--coral-dark); }
+.aspect-pill-badge.mixed { background: var(--blue-bg); color: var(--blue-dark); }
+.aspect-pill-badge.neutral { background: var(--bg-muted); color: var(--text-secondary); }
+
+.aspect-pill-note { 
+  font-size: 0.85rem; 
+  color: var(--text-secondary); 
+  line-height: 1.5;
+}
+
+.aspect-breakdown-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+/* --- Suggestions Box --- */
+.suggestions-box { 
+  background: var(--bg-surface); 
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg); 
+  padding: 16px 20px; 
+}
+
+.suggestion-item { 
+  display: flex; 
+  gap: 12px; 
+  margin-bottom: 12px; 
+  font-size: 0.9rem;
+}
+
+.suggestion-category { 
+  font-size: 0.7rem; 
+  font-weight: 700; 
+  color: var(--coral); 
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 80px;
+}

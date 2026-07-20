@@ -25,6 +25,7 @@ dist-ssr
 .env
 README.md
 .venv/
+.settings.local.json
 
 # Ignore Python cache files
 __pycache__/
