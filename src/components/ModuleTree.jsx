@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { normalizeModuleCode } from './ModTree_components/modTreeModuleData';
 import SelectMajor from './ModTree_components/ModTree_SelectMajor';
 import ModuleTree from './ModTree_components/ModTree_ModTree';
 import SelectedBasket from './ModTree_components/ModTree_SelectionBasket';
 import SelectionBasketButton from './ModTree_components/ModTree_SelectionBasketButton';
+import { ModTreeSearchBar } from './ModTree_components/ModTree_SearchBar';
+import { useModTreeModuleSearch } from '../hooks/useModTreeModuleSearch';
 
 const SEMESTER_LABELS = ['Y1S1', 'Y1S2', 'Y2S1', 'Y2S2', 'Y3S1', 'Y3S2', 'Y4S1', 'Y4S2'];
 
@@ -24,6 +27,18 @@ function collectNestedModules(node, db) {
     if (Array.isArray(node.children)) {
         node.children.forEach((child) => collectNestedModules(child, db));
     }
+
+    if (Array.isArray(node.options)) {
+        node.options.forEach((option) => collectNestedModules(option, db));
+    }
+
+    if (Array.isArray(node.RequirementsPillar)) {
+        node.RequirementsPillar.forEach((pillar) => {
+            if (pillar && typeof pillar === 'object' && Array.isArray(pillar.options)) {
+                pillar.options.forEach((option) => collectNestedModules(option, db));
+            }
+        });
+    }
 }
 
 // Converts a raw Supabase module row back into the shape the rest of the app expects
@@ -41,6 +56,9 @@ function rowToModule(row) {
         pillarLabel: row.pillar_label ?? undefined,
         isLevel4000Pathway: row.is_level4000_pathway,
         options: row.options ?? undefined,
+        isRequirementGroup: row.is_requirement_group ?? row.isRequirementGroup ?? false,
+        Requirements: row.Requirements ?? row.requirements ?? [],
+        RequirementsPillar: row.RequirementsPillar ?? row.requirementspillar ?? [],
     };
 }
  
@@ -55,16 +73,54 @@ function buildDatabase(modules) {
     });
     return db;
 }
+
+function normalizeCustomModuleRecord(module) {
+    if (!module) {
+        return null;
+    }
+
+    if (typeof module === 'string') {
+        return {
+            moduleCode: normalizeModuleCode(module),
+            title: module.toUpperCase(),
+            hasModTreeMetadata: false,
+            source: 'fallback',
+        };
+    }
+
+    const moduleCode = normalizeModuleCode(module.moduleCode);
+    if (!moduleCode) {
+        return null;
+    }
+
+    return {
+        ...module,
+        moduleCode,
+    };
+}
  
 export default function ModuleTreePage() {
     const location = useLocation();
     const navigate = useNavigate();
+    const {
+        query,
+        setQuery,
+        suggestions,
+        setSuggestions,
+        loading: searchLoading,
+        error: searchError,
+    } = useModTreeModuleSearch();
  
     const [selectedMajor, setSelectedMajor] = useState(
         location.state?.selectedMajor ?? 'Empty-Major'
     );
     const [selectedMods, setSelectedMods] = useState(
-        location.state?.selectedMods ?? []
+        (location.state?.selectedMods ?? []).map(normalizeModuleCode).filter(Boolean)
+    );
+    const [customModules, setCustomModules] = useState(
+        (location.state?.customModules ?? [])
+            .map(normalizeCustomModuleRecord)
+            .filter(Boolean)
     );
  
     const [allModules, setAllModules] = useState([]);    // full list from Supabase
@@ -79,7 +135,7 @@ export default function ModuleTreePage() {
             setLoading(true);
             const { data, error } = await supabase
                 .from('modules')
-                .select('*');
+                .select('id,label,level,description,majors,compulsory_for,or_group_id,is_pillar,is_single_module_pillar,pillar_label,is_level4000_pathway,options,"is_requirement_group","Requirements","RequirementsPillar"');
  
             if (error) {
                 console.error('Error fetching modules:', error);
@@ -101,7 +157,12 @@ export default function ModuleTreePage() {
         if (savedState) {
             const restoreFrame = window.requestAnimationFrame(() => {
                 setSelectedMajor(savedState.selectedMajor ?? 'Empty-Major');
-                setSelectedMods(Array.isArray(savedState.selectedMods) ? savedState.selectedMods : []);
+                setSelectedMods(Array.isArray(savedState.selectedMods)
+                    ? savedState.selectedMods.map(normalizeModuleCode).filter(Boolean)
+                    : []);
+                setCustomModules(Array.isArray(savedState.customModules)
+                    ? savedState.customModules.map(normalizeCustomModuleRecord).filter(Boolean)
+                    : []);
                 if (typeof savedState.scrollPosition === 'number') {
                     window.scrollTo({ top: savedState.scrollPosition });
                 }
@@ -112,16 +173,48 @@ export default function ModuleTreePage() {
     }, [location.state]);
  
     const handleToggleModule = (modId) => {
+        const moduleCode = normalizeModuleCode(modId);
         setSelectedMods(current =>
-            current.includes(modId)
-                ? current.filter(id => id !== modId)
-                : [...current, modId]
+            current.includes(moduleCode)
+                ? current.filter(id => id !== moduleCode)
+                : [...current, moduleCode]
         );
     };
  
     const handleClearSelectedMods = () => {
         setSelectedMods([]);
         setPlannerModules(() => createEmptyPlannerModules());
+    };
+
+    const handleAddCustomModule = (module) => {
+        const moduleCode = normalizeModuleCode(module?.moduleCode);
+        if (!moduleCode) {
+            return;
+        }
+
+        setCustomModules(current =>
+            current.some((entry) => entry.moduleCode === moduleCode)
+                ? current
+                : [...current, { ...module, moduleCode }]
+        );
+        setQuery(moduleCode.toUpperCase());
+        setSuggestions([]);
+    };
+
+    const handleRemoveCustomModule = (moduleId) => {
+        const moduleCode = normalizeModuleCode(moduleId);
+        if (!moduleCode) {
+            return;
+        }
+
+        setCustomModules(current => current.filter((entry) => entry.moduleCode !== moduleCode));
+        setSelectedMods(current => current.filter((id) => id !== moduleCode));
+        setPlannerModules(current => Object.fromEntries(
+            Object.entries(current).map(([semester, semesterModules]) => [
+                semester,
+                (semesterModules ?? []).filter((id) => id !== moduleCode)
+            ])
+        ));
     };
 
     const plannerModuleIds = Object.values(plannerModules).flat();
@@ -189,7 +282,7 @@ export default function ModuleTreePage() {
         moveModulesToBasket(semesterModules);
     };
  
-    const moduleTreeState = useMemo(() => ({ selectedMajor, selectedMods }), [selectedMajor, selectedMods]);
+    const moduleTreeState = useMemo(() => ({ selectedMajor, selectedMods, customModules }), [selectedMajor, selectedMods, customModules]);
 
     const filteredModules = useMemo(() =>
         allModules.filter(mod => mod.majors && mod.majors.includes(selectedMajor)),
@@ -201,11 +294,11 @@ export default function ModuleTreePage() {
     ), [filteredModules]);
  
     if (loading) {
-        return (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-                Loading modules…
-            </div>
-        );
+            return (
+                <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
+                    Loading modules…
+                </div>
+            );
     }
  
     if (error) {
@@ -240,6 +333,24 @@ export default function ModuleTreePage() {
                 <div style={{ width: '100%', maxWidth: 'calc(100vw - 320px)', margin: '0 auto', boxSizing: 'border-box' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                         <div style={{ width: '100%', maxWidth: '1160px' }}>
+                            <div style={{ marginBottom: '18px' }}>
+                                <ModTreeSearchBar
+                                    query={query}
+                                    onChange={setQuery}
+                                    suggestions={suggestions}
+                                    onSelect={handleAddCustomModule}
+                                    onDismiss={() => {
+                                        setQuery('');
+                                        setSuggestions([]);
+                                    }}
+                                    loading={searchLoading}
+                                />
+                                {searchError ? (
+                                    <div style={{ marginTop: '8px', color: '#D85A30', fontSize: '12px' }}>
+                                        {searchError}
+                                    </div>
+                                ) : null}
+                            </div>
                             {selectedMajor !== 'Empty-Major' ? (
                                 <ModuleTree
                                     modulesByLvl={modulesByLvl}
@@ -247,6 +358,8 @@ export default function ModuleTreePage() {
                                     selectedMajor={selectedMajor}
                                     moduleTreeState={moduleTreeState}
                                     onToggleModule={handleToggleModule}
+                                    customModules={customModules}
+                                    onRemoveCustomModule={handleRemoveCustomModule}
                                 />
                             ) : (
                                 <div style={{ textAlign: 'center', padding: '40px', color: '#666', fontStyle: 'italic' }}>
@@ -283,7 +396,7 @@ export default function ModuleTreePage() {
                     scrollbarWidth: 'thin',
                 }}
             >
-                <div style={{ display: 'flex', gap: '12px', minWidth: 'max-content', paddingBottom: '8px' }}>
+                    <div style={{ display: 'flex', gap: '12px', minWidth: 'max-content', paddingBottom: '8px' }}>
                     {SEMESTER_LABELS.map((label) => {
                         const semesterModules = plannerModules[label] ?? [];
 

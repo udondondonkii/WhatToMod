@@ -1,74 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchSentiment } from '../../utils/api';
-import { supabase } from '../../supabaseClient';
+import { lookupModuleMetadata } from './modTreeModuleData';
 
 const sentimentCache = {};
-const moduleLookupCache = {};
-
-function rowToModule(row) {
-    return {
-        id: row.id,
-        label: row.label,
-        level: row.level,
-        description: row.description,
-        majors: row.majors ?? [],
-        compulsoryFor: row.compulsory_for ?? [],
-        orGroupId: row.or_group_id ?? undefined,
-        isPillar: row.is_pillar,
-        isSingleModulePillar: row.is_single_module_pillar,
-        pillarLabel: row.pillar_label ?? undefined,
-        isLevel4000Pathway: row.is_level4000_pathway,
-        options: row.options ?? undefined,
-    };
-}
-
-function collectNestedModules(node, collected = []) {
-    if (!node || typeof node !== 'object') {
-        return collected;
-    }
-
-    if (typeof node.id === 'string' && node.id) {
-        collected.push(node);
-    }
-
-    if (Array.isArray(node.children)) {
-        node.children.forEach((child) => collectNestedModules(child, collected));
-    }
-
-    return collected;
-}
-
-async function lookupModule(moduleCode) {
-    const key = moduleCode.toLowerCase();
-    if (moduleLookupCache[key]) return moduleLookupCache[key];
-
-    const { data, error } = await supabase
-        .from('modules')
-        .select('*')
-        .eq('id', key)
-        .single();
-
-    if (error || !data) {
-        const { data: all } = await supabase.from('modules').select('id,options');
-        let found = null;
-        for (const row of all ?? []) {
-            if (row.options) {
-                const match = collectNestedModules({ children: row.options }).find((o) => o.id === key);
-                if (match) {
-                    found = match;
-                    break;
-                }
-            }
-        }
-        moduleLookupCache[key] = found ?? null;
-        return moduleLookupCache[key];
-    }
-
-    const mod = rowToModule(data);
-    moduleLookupCache[key] = mod;
-    return mod;
-}
 
 export default function SelectionBasketButton({ moduleCode, isSelected, isCompulsory, onToggle, onRemove, moduleTreeState = null, fullWidth = false }) {
     const [matchedModule, setMatchedModule] = useState(null);
@@ -83,7 +18,7 @@ export default function SelectionBasketButton({ moduleCode, isSelected, isCompul
 
     useEffect(() => {
         let isMounted = true;
-        lookupModule(moduleCode).then((mod) => {
+        lookupModuleMetadata(moduleCode).then((mod) => {
             if (isMounted) {
                 setMatchedModule(mod);
                 setLoadingModule(false);
@@ -183,17 +118,25 @@ export default function SelectionBasketButton({ moduleCode, isSelected, isCompul
         ];
 
         return entries.map(([label, aspect]) => {
+            const isExpectedGrade = label === 'Expected Grade';
             const pct = Math.round(Math.max(0, Math.min(1, aspect.score)) * 100);
-            const barColor = label === 'Workload' ? '#D85A30' : label === 'Difficulty' ? '#185FA5' : '#1D9E75';
+            const barColor = label === 'Workload' ? '#D85A30' : '#185FA5';
+
             return (
                 <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '8px', fontWeight: '600', color: '#42413F' }}>
                         <span>{label}</span>
-                        <span>{pct}%</span>
+                        {isExpectedGrade ? (
+                            <span>{aspect.level}</span>
+                        ) : (
+                            <span>{pct}%</span>
+                        )}
                     </div>
-                    <div style={{ width: '100%', height: '6px', borderRadius: '999px', backgroundColor: '#E8E6E3', overflow: 'hidden' }}>
-                        <div style={{ width: `${pct}%`, height: '100%', backgroundColor: barColor }} />
-                    </div>
+                    {!isExpectedGrade ? (
+                        <div style={{ width: '100%', height: '6px', borderRadius: '999px', backgroundColor: '#E8E6E3', overflow: 'hidden' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', backgroundColor: barColor }} />
+                        </div>
+                    ) : null}
                 </div>
             );
         });

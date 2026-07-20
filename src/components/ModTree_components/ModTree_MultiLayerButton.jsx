@@ -11,7 +11,10 @@ import {
 function buildPillarDropdownShape(node) {
     return {
         ...node.rawNode,
+        // `pillarName` nodes are structural wrappers, not lookup keys; the dropdown only
+        // needs the label and child module options.
         label: node.label,
+        compulsoryFor: node.rawNode?.compulsoryFor ?? node.rawNode?.compulsory_for ?? [],
         options: Array.isArray(node.childrenGroup?.nodes)
             ? node.childrenGroup.nodes.map((child) => ({
                 id: child.rawNode?.id ?? child.pathKey,
@@ -27,7 +30,7 @@ function buildModuleButtonShape(node) {
         id: node.rawNode?.id,
         label: node.label,
         description: node.rawNode?.description ?? '',
-        compulsoryFor: node.rawNode?.compulsoryFor ?? [],
+        compulsoryFor: node.rawNode?.compulsoryFor ?? node.rawNode?.compulsory_for ?? [],
     };
 }
 
@@ -379,25 +382,6 @@ export default function Level4000Pathway({ nodeData, selectedMods, selectedMajor
                         width: '100%',
                     }}
                 >
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            padding: '6px 10px',
-                            borderRadius: '10px',
-                            backgroundColor: '#E6F1FB',
-                            color: '#185FA5',
-                            fontWeight: '700',
-                            fontSize: '12px',
-                            border: '1px solid rgba(24, 95, 165, 0.16)',
-                        }}
-                    >
-                        <span>{nodeAnalysis.label}</span>
-                        {nodeAnalysis.malformed ? <SectionFlag text="Flagged" /> : null}
-                    </div>
-
                     {nodeAnalysis.childrenGroup?.kind === 'group' || nodeAnalysis.childrenGroup?.kind === 'mixed'
                         ? renderGroupNode(nodeAnalysis.childrenGroup, moduleId, selectedMods, selectedMajor, moduleTreeState, onToggleModule, setActiveTracks, renderNode)
                         : (
